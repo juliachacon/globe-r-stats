@@ -49,6 +49,7 @@ h1.title, h4.author, h4.date { display: none; }
 <div class="programme">Erasmus Mundus Joint Master in Global Change Ecology and Biodiversity Management</div>
 <h1>Section I · General Introduction I: Installing R and first overview</h1>
 <div class="meta">Julia Chacón Labella · Universidad Rey Juan Carlos · Academic year 2026/27</div>
+<div class="meta" style="font-size: 0.85em; margin-top: 4px;">Course materials: <a href="https://github.com/juliachacon/globe-r-stats">github.com/juliachacon/globe-r-stats</a> · Licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></div>
 </div>
 ```
 
@@ -438,3 +439,11 @@ b. How many seedlings are left over?
 a. Find out which version of the package you have installed, using the function `packageVersion()`.
 b. Use the help to find out what the function `diversity()` of `vegan` does, and which diversity indices it can calculate.
 c. List the packages currently loaded in your session.
+
+# License and citation
+
+These materials are part of the course *Introduction to R for Data Science and Statistical Data Analysis* (Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos). The complete and most up-to-date version of all course materials is available at <https://github.com/juliachacon/globe-r-stats>.
+
+This tutorial is licensed under a [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). You are free to share and adapt it, provided that you give appropriate credit. The GLOBE and URJC logos are not covered by this licence.
+
+**How to cite:** Chacón Labella, J. (2026). *Section I · General Introduction I: Installing R and first overview*. In: *Introduction to R for Data Science and Statistical Data Analysis*. Teaching materials, Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos. <https://github.com/juliachacon/globe-r-stats>
