@@ -1,5 +1,7 @@
 # Introduction to R for Data Science and Statistical Analysis in Ecology
 
+> 🚧 **Under construction.** These materials are being developed during the 2026/27 edition of the course and will be updated regularly. Sections II–IV will be added as the course progresses.
+
 Open teaching materials for the R and statistics course of the **Erasmus Mundus Joint Master in Global Change Ecology and Biodiversity Management ([GLOBE](https://globe-master.eu/))**, taught at **Universidad Rey Juan Carlos** (URJC, Madrid, Spain).
 
 **Instructor:** Julia Chacón Labella (Universidad Rey Juan Carlos)
@@ -8,12 +10,12 @@ The course introduces R as a tool for ecological data analysis, from the first s
 
 ## Course structure
 
-| Section | Topic | Contents |
+| Section | Topic | Status |
 |:--|:--|:--|
-| [Section I](section-I_R-environment/) | Introduction to the R environment as a tool for data analyses | R and RStudio, objects, operators, scripts and packages; reading and writing files; basic statistics, `if`/`else`, `for` loops and functions |
-| [Section II](section-II_graphics/) | Graphical tools for data exploration | Base R graphics and `ggplot2`; types of graphs and aesthetics; exploratory data analysis |
-| [Section III](section-III_linear-models/) | Linear models | Simple and multiple regression, model assumptions, multicollinearity, ANOVA, post-hoc tests and ANCOVA |
-| [Section IV](section-IV_glm/) | Generalized linear models (GLM) | Error distributions and link functions; Poisson, negative binomial and binomial GLMs; overdispersion |
+| [Section I](section-I_R-environment/) | Introduction to the R environment as a tool for data analyses | In progress |
+| [Section II](section-II_graphics/) | Graphical tools for data exploration | Coming soon |
+| [Section III](section-III_linear-models/) | Linear models | Coming soon |
+| [Section IV](section-IV_glm/) | Generalized linear models (GLM) | Coming soon |
 
 ## Section I materials
 
