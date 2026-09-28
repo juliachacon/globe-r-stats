@@ -1,4 +1,4 @@
-# Statistical Data Analysis with R: from Linear to Generalized Linear Models
+# Introduction to R for Data Science and Statistical Analysis in Ecology
 
 Open teaching materials for the R and statistics course of the **Erasmus Mundus Joint Master in Global Change Ecology and Biodiversity Management ([GLOBE](https://globe-master.eu/))**, taught at **Universidad Rey Juan Carlos** (URJC, Madrid, Spain).
 
@@ -48,8 +48,7 @@ globe-r-stats/
 
 If you use or adapt these materials, please cite them as:
 
-> Chacón Labella, J. (2026). *Statistical Data Analysis with R: from Linear to Generalized Linear Models*. Teaching materials, Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos. https://github.com/juliachacon/globe-r-stats
-
+> Chacón Labella, J. (2026). *Introduction to R for Data Science and Statistical Data Analysis*. Teaching materials, Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos. https://github.com/juliachacon/globe-r-stats
 ## License
 
 Text, figures and code are released under a [CC BY 4.0](LICENSE.md) licence. The GLOBE and URJC logos belong to their respective institutions and are not covered by this licence.
