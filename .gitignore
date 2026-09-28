@@ -1,0 +1,30 @@
+# ---- Instructor-only material (solutions): never published ----
+instructor/
+
+# ---- R and RStudio ----
+.Rproj.user/
+.Rhistory
+.RData
+.Rapp.history
+.Ruserdata
+
+# ---- Intermediate files from knitting ----
+*.knit.md
+*.utf8.md
+*_cache/
+*_files/
+*.tex
+!assets/latex/*.tex
+*.log
+*.aux
+*.out
+*.toc
+
+# ---- System files ----
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
+.Rproj.user
+.httr-oauth
+.quarto

@@ -1,0 +1,25 @@
+% Preamble for the PDF version of the GLOBE tutorials (Section I)
+% Title block with GLOBE and URJC logos, and figure captions without automatic numbering
+
+\usepackage{graphicx}
+% Folders where LaTeX looks for the logos, relative to the folder of each .Rmd
+% (section folders are one level below the root; instructor folders, two levels)
+\graphicspath{{../assets/logos/}{../../assets/logos/}}
+\usepackage{caption}
+\captionsetup[figure]{labelformat=empty}
+
+\usepackage{titling}
+\setlength{\droptitle}{-1.5cm}
+\pretitle{%
+  \noindent
+  \includegraphics[height=1.9cm]{globe_logo.png}\hfill
+  \includegraphics[height=1.4cm]{urjc_logo.png}\par
+  \vspace{0.8cm}
+  \noindent{\small Erasmus Mundus Joint Master in Global Change Ecology and Biodiversity Management}\par
+  \vspace{0.3cm}
+  \noindent\LARGE\bfseries\raggedright}
+\posttitle{\par\normalfont\normalsize\vspace{0.4cm}}
+\preauthor{\noindent\large\raggedright}
+\postauthor{\par\normalsize}
+\predate{\noindent\large\raggedright}
+\postdate{\par\normalsize\vspace{0.3cm}\noindent\rule{\textwidth}{0.4pt}\par}
