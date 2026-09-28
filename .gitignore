@@ -28,3 +28,8 @@ desktop.ini
 .Rproj.user
 .httr-oauth
 .quarto
+
+
+# ---- Rendered documents (distributed separately) ----
+*.pdf
+*.html
