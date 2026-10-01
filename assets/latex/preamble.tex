@@ -24,3 +24,25 @@
 \predate{\noindent\large\raggedright}
 \postdate{\par\normalsize\vspace{0.3cm}\noindent\rule{\textwidth}{0.4pt}\par
   \vspace{0.1cm}\noindent{\footnotesize Course materials: \href{https://github.com/juliachacon/globe-r-stats}{github.com/juliachacon/globe-r-stats}\enspace$\cdot$\enspace Licensed under \href{https://creativecommons.org/licenses/by/4.0/}{CC BY 4.0}}\par}
+  
+% ---- Header and footer on every page (PDF) ----
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\sectionmark}[1]{\markboth{#1}{}}   % section name as written, not in capitals
+\fancyhead[R]{\footnotesize\nouppercase{\leftmark}}
+\fancyfoot[L]{\footnotesize Julia Chacón Labella\enspace$\cdot$\enspace GLOBE\enspace$\cdot$\enspace URJC\enspace$\cdot$\enspace CC BY 4.0}
+\fancyfoot[R]{\footnotesize \thepage\ / \pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\setlength{\headheight}{14pt}
+
+% same footer on the first page (title and table of contents), without the section header
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+\fancyfoot[L]{\footnotesize Julia Chacón Labella\enspace$\cdot$\enspace GLOBE\enspace$\cdot$\enspace URJC\enspace$\cdot$\enspace CC BY 4.0}
+  \fancyfoot[R]{\footnotesize \thepage\ / \pageref{LastPage}}%
+  \renewcommand{\headrulewidth}{0pt}%
+  \renewcommand{\footrulewidth}{0.4pt}%
+}
