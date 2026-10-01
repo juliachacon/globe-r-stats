@@ -1,5 +1,5 @@
 ---
-title: "Section I · Organising your work: sessions, projects, directories and data files"
+title: "Section I · General Introduction III: Organising your work: sessions, projects, directories and data files"
 author: "Julia Chacón Labella"
 date: "Academic year 2026/27"
 output:
