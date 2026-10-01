@@ -1,0 +1,410 @@
+---
+title: "Section I · Data management and filtering of biodiversity data"
+author: "Julia Chacón Labella"
+date: "Academic year 2026/27"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
+    includes:
+      in_header: ../assets/latex/preamble.tex
+  html_document:
+    toc: yes
+    number_sections: no
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<style>
+p.caption {
+  font-size: 0.8em;
+}
+
+/* Header with logos (replaces the default title block in HTML) */
+h1.title, h4.author, h4.date { display: none; }
+.course-header { margin: 10px 0 30px; padding-bottom: 12px; border-bottom: 1px solid #ddd; }
+.course-header .logos { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+.course-header .logos p { margin: 0; }
+.course-header img.globe { height: 75px; }
+.course-header img.urjc  { height: 55px; }
+.course-header .programme { margin-top: 18px; color: #555; }
+.course-header h1 { margin-top: 8px; }
+.course-header .meta { color: #555; }
+
+/* Simple boxes for objectives, notes, key rules and practice */
+.objectives, .note, .tip, .practice {
+  padding: 10px 15px; margin: 18px 0;
+  background-color: #f7f7f7; border: 1px solid #ddd; border-left: 4px solid #999;
+}
+</style>
+
+```{=html}
+<div class="course-header">
+<div class="logos">
+<div><img class="globe" src="../assets/logos/globe_logo.png" alt="GLOBE – Global Change Ecology and Biodiversity Management"></div>
+<div><img class="urjc" src="../assets/logos/urjc_logo.png" alt="Universidad Rey Juan Carlos"></div>
+</div>
+<div class="programme">Erasmus Mundus Joint Master in Global Change Ecology and Biodiversity Management</div>
+<h1>Section I · Data management and filtering of biodiversity data</h1>
+<div class="meta">Julia Chacón Labella · Universidad Rey Juan Carlos · Academic year 2026/27</div>
+<div class="meta" style="font-size: 0.85em; margin-top: 4px;">Course materials: <a href="https://github.com/juliachacon/globe-r-stats">github.com/juliachacon/globe-r-stats</a> · Licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></div>
+</div>
+```
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+```{=latex}
+\newpage
+```
+
+::: {.objectives}
+**Learning objectives**
+
+By the end of this session you will be able to:
+
+- combine vectors, matrices and data frames with `cbind()`, `rbind()` and `merge()`;
+- explore and reorganise data with `rowSums()`, `colSums()`, `sort()`, `order()`, `t()`, `rep()` and `unique()`;
+- select subsets of data using square brackets, `subset()` and `which()`;
+- identify and remove missing values (`NA`);
+- create nominal and ordered factors.
+:::
+
+# Data management and preparation
+
+Data management refers to the tasks of combining, joining, transposing, reorganising, deleting, replacing and modifying our data. It is one of the tasks that most often causes problems for R users. We will look at some basic and very useful functions to manage our data.
+
+## Functions to combine data
+
+Two very useful and widely used functions are `cbind()` and `rbind()`. Both allow us to combine vectors, matrices or data frames by columns or by rows.
+
+The `cbind()` function combines vectors or lists by columns. In other words, it lets us paste columns one after another. In the case of data frames, the columns must have the same number of rows.
+
+Let's look at this example using `cbind()` with matrices:
+
+```{r bind-1, echo=TRUE}
+x <- matrix(c(1,2,3,4),2,2) # create a 2 x 2 matrix
+y <- c(5,6) # I want to add an extra column. First, I create the vector I want to paste.
+x
+y
+z <- cbind(x,y) # bind the new vector to the matrix
+z
+```
+
+The `rbind()` function is similar, but it combines vectors or lists by rows. That is, it lets us add rows. They must therefore have the same number of columns.
+
+```{r bind-2, echo=TRUE}
+x
+y
+z <- rbind(x,y) # I can also add it as a row
+z
+```
+
+Another example with a data frame:
+
+```{r bind-3, echo=TRUE}
+data("Orange")
+head(Orange)
+dim(Orange)
+
+ID <- c(1:35)
+newOrange <- cbind(Orange,ID)
+
+newRow <- c(5, 20, 115, 36)
+newOrange <- rbind(newOrange,newRow)
+
+# I can add multiple rows
+newRow2 <- c(5, 118, 62, 37)
+newRow3 <- c(5, 110, 32, 38)
+newOrange <- rbind(newOrange,newRow2, newRow3)
+
+tail(newOrange)
+
+```
+
+The `merge()` function joins two data frames by a field they have in common. That common field must be a shared column or row, and it must have the same name in both data frames.
+
+```{r bind-4, echo=TRUE}
+set.seed(123) # for reproducibility of the random values below
+
+species <- data.frame(id = 1:3, name = c("Betula", "Quercus", "Abies"))
+
+dimensions <- data.frame(id = c(1, 1, 1, 2, 2, 3, 3, 3, 1),
+                         height = c(3,2,9,12,13, 5, 10, 13, 3),
+                         diam = 100 * runif(9))
+species
+dimensions
+
+mydata <- merge(species, dimensions) # they will be joined by the common field, even if I don't specify it
+
+head(mydata)
+
+mydata2 <- merge(species, dimensions, by="id") # if there are several common fields, we must specify the one we want to use for the join
+
+head(mydata2)
+
+```
+
+## Data exploration
+
+To manage data correctly, it is very important to explore the datasets carefully first. We have already seen some functions that show us the structure of a dataset, such as `head()`, `tail()` or `table()`. Before going further, we will look at other simple functions that let us explore and reorganise data.
+
+Let's install and load the `vegan` package and the `BCI` dataset:
+
+```{r explore-1, echo=TRUE, eval=FALSE}
+install.packages("vegan")
+library(vegan)
+```
+
+And let's explore it a little:
+
+```{r explore-2, echo=TRUE, eval=FALSE}
+data("BCI")
+?BCI
+head(BCI) # community composition table (inventory, counts)
+```
+
+The first two functions we will see are `rowSums()` and `colSums()`. They compute sums by rows and by columns. The `BCI` dataset is a data frame containing an inventory of tree species on Barro Colorado Island. It is a count of the number of individuals per species in 50 plots (rows), for a total of 225 species (columns).
+
+If we sum the content of each row, we will know the number of trees found in each plot, regardless of species.
+
+```{r explore-3, echo=TRUE, eval=FALSE}
+rowSums(BCI)
+```
+
+If we sum the content of each column, we will know the total number of individuals of each species across all plots.
+
+```{r explore-4, echo=TRUE, eval=FALSE}
+colSums(BCI)
+```
+
+Other interesting functions are `sort()` and `order()`. They are used to order the values of a vector.
+
+```{r explore-5, echo=TRUE}
+w <- c(2,5,2,3,4,5,5,1,1,4,7,NA,9) # create a vector
+w
+sort(w) # by default, sort() orders in increasing order (and drops NAs)
+sort(w, decreasing=TRUE) # I can ask for decreasing order
+sort(w, decreasing=TRUE, na.last=TRUE) # we ask it to keep the NAs at the end
+```
+
+The `order()` function works in increasing order, but it does not return the sorted data. Instead, it returns the positions of the elements according to their value, leaving the `NA`s at the end. It can be a bit confusing at first.
+
+```{r explore-6, echo=TRUE}
+w
+order(w) # the 8th element has the lowest value (1), element 13 has the highest value, element 12 is an NA
+order(-w) # decreasing order
+```
+
+```{r explore-7, echo=TRUE, eval=FALSE}
+# Example to see the difference between sort() and order()
+sort(iris$Petal.Length)
+order(iris$Petal.Length)
+iris[order(iris$Petal.Length),]
+```
+
+Transposing matrices and data frames is very useful. It is done with the `t()` function.
+
+When you transpose a data frame, it is transposed as a matrix:
+
+```{r explore-8, echo=TRUE}
+head(iris)
+iris.t <- t(iris) # transpose iris with the t() function
+# head(iris.t) # you can check how it looks
+class(iris.t) # we check that it has been converted into a matrix. Be careful with this!
+iris.t.df <- as.data.frame(iris.t) # you could convert it back into a data frame
+```
+
+You can also transpose a matrix:
+
+```{r explore-9, echo=TRUE}
+m <- matrix(data=c(101:112), nrow=3, ncol=4) # create a matrix
+tm <- t(m)
+```
+
+If you transpose a vector, you get a matrix with a single row:
+
+```{r explore-10, echo=TRUE}
+v <- c("flower", "flower", "thing")
+tv <- t(v)
+```
+
+The `rep()` function repeats elements as many times as we indicate. The `unique()` function returns the unique values, that is, each value that appears at least once.
+
+```{r explore-11, echo=TRUE}
+c("flower", "flower", "thing") # create a vector with three elements
+rep(c("flower", "flower", "thing"), times=3) # now we repeat it three times
+unique(rep(c("flower", "flower", "thing"), times=3)) # tells us which elements appear at least once
+
+thing <- rep(c("flower", "flower", "thing"), times=3) # repeat the above, giving it a name
+unique(thing)
+```
+
+## Subsetting and selecting data
+
+First, let's remember how to select or access data in a data frame using square bracket notation. We will look at a quick example to review some ideas. For this, we load the `iris` dataset.
+
+```{r subset-1, echo=TRUE}
+data("iris")
+iris1 <- iris[1:15,]  # select the first 15 rows (observations)
+iris2 <- iris[,3:4] # select columns (variables) 3 to 4
+iris3 <- iris[1:15, 3:4] # select a block: rows 1 to 15 of columns 3 and 4
+```
+
+To select specific observations (rows) and specific variables (columns) we can combine strategies, for example:
+
+```{r subset-2, echo=TRUE}
+iris.ss1 <- iris[1:15, c(1,4)]
+```
+
+To select only the cases in which a variable takes a given value, for example, to select all data where the species variable equals *Iris setosa*:
+
+```{r subset-3, echo=TRUE}
+iris.ss2 <- iris[iris$Species == "setosa",] # rows and columns of iris when the species is Iris setosa
+```
+
+We may also want the data to meet several conditions. For example, to select all data with sepal length greater than 7 and where the species variable equals *Iris virginica*:
+
+```{r subset-4, echo=TRUE}
+iris.ss3 <-  iris[iris$Sepal.Length > 7 & iris$Species == "virginica",]
+# rows and columns of iris when the species is Iris virginica and sepal length is greater than 7
+iris.ss3
+```
+
+To select subsets of data in a data frame we can also use the `subset()` function. Let's look at an example with a new dataset called `airquality`:
+
+```{r subset-5, echo=TRUE}
+data("airquality")
+head(airquality)
+
+air.ss <- subset(airquality, Temp > 80, select = c(Ozone, Temp)) # select the variables Ozone and Temp for the cases with temperature above 80
+air.ss2 <- subset(airquality, Day == 1, select = -Temp) # select all variables except Temp for all cases where Day equals 1
+air.ss3 <- subset(airquality, select = Ozone:Wind) # select the variables from Ozone to Wind
+```
+
+Let's look at another example using the `subset()` function and the `iris` dataset:
+
+```{r subset-6, echo=TRUE}
+head(iris)
+iris.ss4 <- subset(iris, Sepal.Width > 3.9, select = c(Sepal.Length, Species))
+iris.ss5 <- subset(iris, Sepal.Width == 3.5, select = c(Sepal.Width:Species))
+
+```
+
+Another useful function to select data is `which()`. Let's see how to use `which()` and how to run the same command with `subset()` and with `[]`:
+
+```{r subset-7, echo=TRUE}
+iris.ss6 <- iris[which(iris$Sepal.Width > 3.9),] # from iris, select all cases with Sepal.Width greater than 3.9
+iris.ss7 <- subset(iris, Sepal.Width > 3.9) # the same using subset()
+iris.ss8 <- iris[iris$Sepal.Width > 3.9,] # the same using square brackets
+```
+
+We can make the selection a bit more complex. Using `which()` and `[]`, we select all cases in the `iris` data frame with `Sepal.Width` values greater than 3.9. From this selection, we only want the variables `Sepal.Length` and `Species`, which correspond to columns 1 and 5.
+
+```{r subset-8, echo=TRUE}
+iris.ss9 <- iris[which(iris$Sepal.Width > 3.9),][,c(1,5)]
+iris.ss9
+```
+
+Another example combining `which()` and `[]`: we select all cases in the `iris` data frame with `Sepal.Width` equal to 3.5. From this selection, we only want the variables from `Sepal.Width` to `Species`, which correspond to columns 2 to 5.
+
+```{r subset-9, echo=TRUE}
+iris.ss10 <- iris[which(iris$Sepal.Width == 3.5),][,c(2:5)]
+iris.ss10
+```
+
+## Changing data structures and formats
+
+### Removing NAs
+
+`NA` values are missing values. Sometimes we want to clean our datasets to remove `NA`s and prepare them for an analysis. Other times we want to keep them. Whether to remove or keep `NA`s depends on what we want to do. Let's learn how to remove them.
+
+We identify them with the `is.na()` function. It is a logical function (`TRUE/FALSE`) that tells us which values of a vector are `NA` (`TRUE`) and which are not (`FALSE`).
+
+```{r na-1, echo=TRUE}
+v <- c(2,4,5,6,10,12,2,NA,NA,6,8,10) # create a vector containing missing values (NAs)
+v.NAs <- is.na(v)  # identify the NAs
+v.NAs
+```
+
+Here we introduce the `!` symbol, which means "not" or "the opposite of". We can ask which values are not `NA`:
+
+```{r na-2, echo=TRUE}
+v[!v.NAs]  # Here we are saying "from v, select the opposite of v.NAs", i.e. everything that is not TRUE in the vector v.NAs
+```
+
+The `!` symbol is widely used for subsetting. For example, `!=` means "not equal to":
+
+```{r na-3, echo=TRUE}
+iris.ss11 <- iris[which(iris$Sepal.Width != 3.5),]
+```
+
+We can also use the `complete.cases()` function, which is also a logical function (`TRUE/FALSE`).
+
+Now suppose we have a vector containing `NA`s and we want to keep only the complete cases. This situation is illustrated in the following example:
+
+```{r na-4, echo=TRUE}
+v
+v.complete <- complete.cases(v)
+v.complete # now the FALSE values are the NAs (careful!)
+v[v.complete] # select the complete cases from v, i.e. those that are TRUE
+```
+
+### Factors
+
+Factors are a data type that stores categorical or qualitative variables. Although factors are an `R` data type, we explain them in this tutorial because they are generally used to prepare data for analyses that require factors. They are also widely used to make plots or figures in `R`.
+
+By definition, they have a limited number of levels or categories. For example, sex would only have two levels, male/female (these would be nominal factors). They can also be numeric factors (e.g. sampling sites along an altitudinal gradient where we have 5 sites), they can take values 0 and 1... Factors are created with the `factor()` function.
+
+```{r factors-1, echo=TRUE}
+sex <- c("male", "female", "male", "female", "male", "male", "female", "male", "male", "female", "female", "female")
+factor(sex) # in this case the as.factor() function would also work
+```
+
+We can see that when we convert the vector `sex` into a factor, it becomes a factor with two levels: female and male.
+
+Factors can be nominal or ordinal. Nominal factors do not imply any order, such as sex. Ordinal factors do imply an order or gradation, such as the altitude of sampling sites on a mountain.
+
+Let's see how to specify an ordinal variable or factor (one with an order).
+
+```{r factors-2, echo=TRUE}
+sites <- c("High", "Low", "Low", "Medium", "Low", "Medium", "High") # sampling sites on a mountain
+factor(sites) # if I convert it into a factor, I see it has three levels: High, Low and Medium (in alphabetical order)
+```
+
+If I want them ordered by increasing altitude, then I want the levels to be: Low, Medium and High, in this order. I have to tell the `factor()` function that I want the factor to be ordered (with the `ordered` argument) and the order it should follow (the `levels` argument followed by a vector indicating the order).
+
+```{r factors-3, echo=TRUE}
+factor(sites, ordered = TRUE, levels = c("Low", "Medium", "High"))
+sites.f <- factor(sites, ordered = TRUE, levels = c("Low", "Medium", "High")) # I can save it
+```
+
+Sometimes, when we load data with character variables, they are stored as factors (this was the default behaviour of `read.csv()` and `data.frame()` before R 4.0.0; now you need `stringsAsFactors = TRUE`).
+
+If we are going to fit a regression, it is advisable to store categorical variables as factors (`R` will internally code the different levels of the factor as integers). For example, let's load the `iris` dataset, which is a data frame. The previous examples were with vectors, but remember that each variable or column of a data frame is a vector. We can ask whether the variable `Species` is a factor or, equivalently, whether it has levels.
+
+```{r factors-4, echo=TRUE}
+data("iris")
+head(iris)
+levels(iris$Species)
+is.factor(iris$Species)
+class(iris$Species)
+```
+
+If we now save the `iris` dataset in `.csv` or `.xlsx` format, or any other non-`R` format, we would lose this internal factor structure. It can only be preserved if we save the data as `.RData` or `.rds`. This is one of the advantages of using `R`'s own formats. In this case it is not very important, because we can easily convert `Species` back into a factor after importing it, but in other cases it will be preferable to keep the data structure in an `R` format.
+
+# License and citation
+
+These materials are part of the course *Introduction to R for Data Science and Statistical Data Analysis* (Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos). The complete and most up-to-date version of all course materials is available at <https://github.com/juliachacon/globe-r-stats>.
+
+This tutorial is licensed under a [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). You are free to share and adapt it, provided that you give appropriate credit. The GLOBE and URJC logos are not covered by this licence.
+
+**How to cite:** Chacón Labella, J. (2026). *Section I · Data management and filtering of biodiversity data*. In: *Introduction to R for Data Science and Statistical Data Analysis*. Teaching materials, Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos. <https://github.com/juliachacon/globe-r-stats>
