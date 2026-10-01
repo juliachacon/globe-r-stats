@@ -1,0 +1,601 @@
+---
+title: "Section I · Organising your work: sessions, projects, directories and data files"
+author: "Julia Chacón Labella"
+date: "Academic year 2026/27"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
+    includes:
+      in_header: ../assets/latex/preamble.tex
+  html_document:
+    toc: yes
+    number_sections: no
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<style>
+p.caption {
+  font-size: 0.8em;
+}
+
+/* Header with logos (replaces the default title block in HTML) */
+h1.title, h4.author, h4.date { display: none; }
+.course-header { margin: 10px 0 30px; padding-bottom: 12px; border-bottom: 1px solid #ddd; }
+.course-header .logos { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+.course-header .logos p { margin: 0; }
+.course-header img.globe { height: 75px; }
+.course-header img.urjc  { height: 55px; }
+.course-header .programme { margin-top: 18px; color: #555; }
+.course-header h1 { margin-top: 8px; }
+.course-header .meta { color: #555; }
+
+/* Simple boxes for objectives, notes, key rules and practice */
+.objectives, .note, .tip, .practice {
+  padding: 10px 15px; margin: 18px 0;
+  background-color: #f7f7f7; border: 1px solid #ddd; border-left: 4px solid #999;
+}
+</style>
+
+```{=html}
+<div class="course-header">
+<div class="logos">
+<div><img class="globe" src="../assets/logos/globe_logo.png" alt="GLOBE – Global Change Ecology and Biodiversity Management"></div>
+<div><img class="urjc" src="../assets/logos/urjc_logo.png" alt="Universidad Rey Juan Carlos"></div>
+</div>
+<div class="programme">Erasmus Mundus Joint Master in Global Change Ecology and Biodiversity Management</div>
+<h1>Section I · Organising your work: sessions, projects, directories and data files</h1>
+<div class="meta">Julia Chacón Labella · Universidad Rey Juan Carlos · Academic year 2026/27</div>
+<div class="meta" style="font-size: 0.85em; margin-top: 4px;">Course materials: <a href="https://github.com/juliachacon/globe-r-stats">github.com/juliachacon/globe-r-stats</a> · Licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></div>
+</div>
+```
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+```{=latex}
+\newpage
+```
+
+::: {.objectives}
+**Learning objectives**
+
+By the end of this session you will be able to:
+
+- explain what an R session is, and list, remove, save and restore the objects it contains;
+- create and use an RStudio Project to organise a data analysis;
+- find the working directory and use relative paths to locate files;
+- create, list, copy, rename and delete folders and files from R;
+- import and export data in text formats (`.txt`, `.csv`), Excel files and R's own formats (`.RData`, `.rds`);
+- choose the most appropriate file format for each stage of your work.
+:::
+
+# Why organising your work matters
+
+When we work with biodiversity data (for example, occurrence records downloaded from GBIF), we usually handle many files: raw downloads, cleaned datasets, scripts, figures, model outputs... If these files are scattered across your computer, your analysis quickly becomes hard to follow, hard to repeat and hard to share.
+
+In this session we will learn three things that go together:
+
+1. how R keeps your work in memory (**sessions**) and how to organise each analysis in its own folder (**RStudio Projects**);
+2. how R finds files on your computer (**working directory and paths**) and how to manage folders and files from R;
+3. how to **import and export data** in the most common formats.
+
+To run the examples safely, without touching your own folders, we will work inside a temporary folder that R creates in every session. Its location is given by `tempdir()`:
+
+```{r base-folder}
+base <- file.path(tempdir(), "GLOBE_project")
+dir.create(base, showWarnings = FALSE)
+base
+```
+
+# Sessions
+
+## What is a session
+
+Every time you open R (or RStudio) you start a **session**. All the objects and functions you create during that session are stored in your computer's memory (RAM), and you can see them in the **Environment** tab of RStudio.
+
+When the session ends (because you close RStudio, or because R crashes), everything stored in memory is lost, unless you have saved it to a file.
+
+`ls()` lists the names of all the objects in the current session:
+
+```{r session-1}
+data("iris")                   # load a dataset that comes with R
+plot_radius <- 10
+plot_area <- pi * plot_radius^2
+ls()
+```
+
+`rm()` removes objects from the session:
+
+```{r session-2}
+rm(plot_radius)
+ls()
+```
+
+To remove **all** the objects of the session at once:
+
+```{r session-3, eval = FALSE}
+rm(list = ls())
+```
+
+You can also clear the Environment with the broom icon in the Environment tab.
+
+## Saving and restoring a session
+
+You can save all the objects of your session in a single file with the extension `.RData`, using `save.image()`, and restore them later with `load()`:
+
+```{r session-4}
+save.image(file = file.path(base, "my_first_session.RData"))
+
+rm(list = c("iris", "plot_area"))   # remove the objects...
+ls()
+
+load(file.path(base, "my_first_session.RData"))   # ...and restore them
+ls()
+```
+
+You can do the same from the Environment tab: the save icon saves the session, and the open-folder icon loads a saved one.
+
+::: {.tip}
+**Good practice: your script is the real record of your work, not the session.** Saved sessions (`.RData`) store objects, but not *how* you created them. If your script is complete, you can always recreate every object by running it again. For this reason we recommend that you do not save the workspace automatically when you close RStudio: go to `Tools > Global Options > General` and set *"Save workspace to .RData on exit"* to **Never**, and untick *"Restore .RData into workspace at startup"*. This way, every session starts clean and you make sure your scripts really work from start to finish.
+:::
+
+::: {.note}
+**Some things to remember about sessions**
+
+- You can have more than one R session open on the same computer at the same time.
+- The objects of one session are not shared with other sessions.
+- Scripts are files: they are not part of the session. Save them (`Ctrl + S`) or you will lose them when you close RStudio.
+:::
+
+# RStudio Projects
+
+An **RStudio Project** (`.Rproj`) is a simple and very practical way to organise each data analysis. A project is just a folder on your computer that contains everything related to one piece of work (data, scripts, figures, results), plus a small `.Rproj` file that RStudio uses to open it.
+
+When you open a project in RStudio:
+
+- a new, clean R session starts;
+- the **working directory is automatically set to the project folder**, so you can use short relative paths such as `"data/raw/occurrences.csv"`;
+- RStudio remembers the scripts you had open, the history and the project settings.
+
+This makes your analysis **portable**: you can move the folder, send it to a colleague or open it on another computer, and the code will still work.
+
+## Creating a project
+
+1. Go to `File > New Project...`
+2. Choose **New Directory > New Project** (or **Existing Directory** if you already have a folder with your files).
+3. Give the project a name and choose where to save it.
+4. Click **Create Project**.
+
+To open a project later, double-click on its `.Rproj` file, or use `File > Open Project...`. The name of the open project appears in the top-right corner of RStudio.
+
+## A suggested folder structure
+
+Inside each project, it is very useful to keep separate folders for each type of file:
+
+```
+GLOBE_project/
+|-- GLOBE_project.Rproj
+|-- data/
+|   |-- raw/       # original data: never modify these files
+|   `-- clean/     # processed data, created by your scripts
+|-- scripts/
+|-- figures/
+`-- results/
+```
+
+::: {.tip}
+**Keep your raw data untouched.** Never edit the original data files by hand. Read them into R, clean them with a script, and save the result in a different folder (e.g. `data/clean`). This way you can always go back to the original data and repeat the whole process.
+:::
+
+# The working directory and paths
+
+## The working directory
+
+The **working directory** is the folder where R looks for files to read and where it saves files by default. You can check which one you are using with `getwd()`:
+
+```{r wd-1}
+getwd()
+```
+
+You can change it with `setwd()`, or from the RStudio menu `Session > Set Working Directory > Choose Directory...`. Note that R uses forward slashes `/` in paths, also on Windows (alternatively, use double backslashes `\\`):
+
+```{r wd-2, eval = FALSE}
+setwd("C:/Users/julia/Documents/GLOBE")     # Windows
+setwd("/Users/julia/Documents/GLOBE")       # macOS / Linux
+```
+
+::: {.note}
+Using `setwd()` with an absolute path inside your scripts is a bad habit: the script will only work on your computer. If you work with RStudio Projects, you will (almost) never need `setwd()`.
+:::
+
+## Absolute and relative paths
+
+- An **absolute path** starts at the root of your computer: `"C:/Users/julia/Documents/GLOBE/data/raw/occurrences.csv"`.
+- A **relative path** starts at the working directory: `"data/raw/occurrences.csv"`.
+- `"."` refers to the current directory and `".."` to the parent directory (one level up).
+
+## Building paths with `file.path()`
+
+Instead of pasting folder names by hand, use `file.path()`. It adds the separators for you:
+
+```{r path-1}
+file.path("data", "raw", "gbif_download.csv")
+```
+
+The `here` package goes one step further: `here::here()` always builds paths starting from the root of your project, regardless of where your script or R Markdown file is saved.
+
+```{r path-2, eval = FALSE}
+install.packages("here")
+library(here)
+here("data", "raw", "gbif_download.csv")
+```
+
+# Managing directories and files
+
+## Creating directories
+
+`dir.create()` creates a new folder. With `recursive = TRUE` it also creates any intermediate folders that do not exist yet. Let's create the folder structure suggested above:
+
+```{r dir-1}
+dir.create(file.path(base, "data", "raw"), recursive = TRUE)
+dir.create(file.path(base, "data", "clean"), recursive = TRUE)
+dir.create(file.path(base, "scripts"))
+dir.create(file.path(base, "figures"))
+```
+
+A typical structure for a data analysis project looks like this:
+
+```
+GLOBE_project/
+|-- data/
+|   |-- raw/      # original data, never modified
+|   `-- clean/    # processed data
+|-- figures/
+`-- scripts/
+```
+
+::: {.practice}
+**Now it's your turn.** Create the same project structure, but this time in your working directory instead of the temporary folder, so that it is kept when you close R. To do this, define a new path using `getwd()` inside `file.path()`, and then run the same `dir.create()` commands using that new path.
+:::
+
+```{r dir-1b, eval = FALSE}
+base_path <- file.path(getwd(), "GLOBE_project")
+dir.create(base_path)
+dir.create(file.path(base_path, "data", "raw"), recursive = TRUE)
+dir.create(file.path(base_path, "data", "clean"), recursive = TRUE)
+dir.create(file.path(base_path, "figures"))
+dir.create(file.path(base_path, "scripts"))
+
+list.dirs(base_path, full.names = FALSE)   # check the result
+```
+
+The rest of the examples in this tutorial keep using the temporary folder (`base`).
+
+## Checking whether a directory exists
+
+`dir.exists()` returns `TRUE` or `FALSE`. It is useful to avoid errors or warnings when a folder already exists:
+
+```{r dir-2}
+dir.exists(file.path(base, "figures"))
+dir.exists(file.path(base, "results"))
+
+if (!dir.exists(file.path(base, "results"))) {
+  dir.create(file.path(base, "results"))
+}
+```
+
+## Listing directories and files
+
+`list.dirs()` lists the folders inside a directory, and `list.files()` (or its synonym `dir()`) lists the files. Without arguments, both work on the working directory. Some useful arguments of `list.files()` are:
+
+- `pattern`: only files whose names match a pattern (a regular expression).
+- `full.names = TRUE`: returns the full path, not just the file name.
+- `recursive = TRUE`: also looks inside subfolders.
+
+```{r dir-3}
+list.dirs(base, full.names = FALSE)
+
+write.csv(iris, file.path(base, "data", "raw", "iris.csv"), row.names = FALSE)
+write.csv(airquality, file.path(base, "data", "raw", "airquality.csv"), row.names = FALSE)
+
+list.files(base, recursive = TRUE)                                 # everything, including subfolders
+list.files(file.path(base, "data", "raw"), pattern = "\\.csv$")    # only .csv files
+list.files(file.path(base, "data", "raw"), pattern = "\\.csv$", full.names = TRUE)
+```
+
+This is especially useful when we have many files with the same structure (for example, one GBIF download per species) and we want to read them all at once:
+
+```{r dir-4}
+csv_files <- list.files(file.path(base, "data", "raw"), pattern = "\\.csv$", full.names = TRUE)
+all_data <- lapply(csv_files, read.csv)    # read every file into a list
+names(all_data) <- basename(csv_files)
+str(all_data, max.level = 1)
+```
+
+## Information about files
+
+```{r dir-5}
+f <- file.path(base, "data", "raw", "iris.csv")
+file.exists(f)          # does the file exist?
+basename(f)             # file name
+dirname(f)              # folder that contains it
+tools::file_ext(f)      # file extension
+file.size(f)            # size in bytes
+```
+
+## Copying, renaming and deleting files
+
+```{r dir-6}
+# copy a file to another folder
+file.copy(from = file.path(base, "data", "raw", "iris.csv"),
+          to   = file.path(base, "data", "clean", "iris.csv"))
+
+# rename (or move) a file
+file.rename(from = file.path(base, "data", "clean", "iris.csv"),
+            to   = file.path(base, "data", "clean", "iris_clean.csv"))
+list.files(file.path(base, "data", "clean"))
+
+# delete a file
+file.remove(file.path(base, "data", "raw", "airquality.csv"))
+list.files(file.path(base, "data", "raw"))
+```
+
+To delete a folder and everything inside it, use `unlink()` with `recursive = TRUE`.
+
+::: {.tip}
+**Be careful:** files deleted from R do not go to the recycle bin. They are gone for good.
+:::
+
+```{r dir-7}
+unlink(file.path(base, "results"), recursive = TRUE)
+list.dirs(base, full.names = FALSE)
+```
+
+## Downloading files from the internet
+
+`download.file()` downloads a file from a URL and saves it on your computer. Many biodiversity datasets can be downloaded this way. On Windows, use `mode = "wb"` for binary files such as `.zip`:
+
+```{r dir-8, eval = FALSE}
+download.file(url = "https://example.org/dataset.zip",
+              destfile = file.path(base, "data", "raw", "dataset.zip"),
+              mode = "wb")
+unzip(file.path(base, "data", "raw", "dataset.zip"),
+      exdir = file.path(base, "data", "raw"))
+```
+
+# Importing and exporting data
+
+To analyse data, we first need to bring them into R (**import** or **read**), and at the end of our work we will want to save the results (**export** or **write**). In this section we will see the most common formats:
+
+- **text (tabular) files**: `.txt`, `.csv`;
+- **Excel files**: `.xls`, `.xlsx`;
+- **R's own formats**: `.RData` (or `.rda`) and `.rds`.
+
+In all the examples we will **export** the `iris` dataset to a file and then **import** it again with a different name, so that we can compare the two.
+
+::: {.note}
+**Remember to assign the result of an import to an object.** `read.csv("data/raw/iris.csv")` only prints the data in the console; `iris_csv <- read.csv("data/raw/iris.csv")` stores them in your session so you can work with them.
+:::
+
+## Text files: `read.table()` and `write.table()`
+
+`read.table()` and `write.table()` are the general base R functions to read and write tabular text files. All the other functions in this section are variations of them. Their most important arguments are:
+
+| Argument | Meaning | Default in `read.table()` |
+|:--|:--|:--|
+| `file` | path to the file | (required) |
+| `header` | does the first row contain the column names? | `FALSE` |
+| `sep` | character that separates the columns (`"\t"` tab, `","` comma, `";"` semicolon...) | any white space |
+| `dec` | decimal mark (`"."` or `","`) | `"."` |
+| `na.strings` | how missing values are written in the file | `"NA"` |
+| `stringsAsFactors` | convert text columns into factors? | `FALSE` (since R 4.0.0) |
+
+Let's export `iris` to a tab-separated text file:
+
+```{r txt-1}
+write.table(iris, file = file.path(base, "data", "raw", "iris.txt"),
+            sep = "\t", row.names = FALSE)
+```
+
+`row.names = FALSE` prevents R from writing the row numbers as an extra, unnamed first column.
+
+Now let's import it. Watch what happens if we forget the `header` argument:
+
+```{r txt-2}
+iris_txt_wrong <- read.table(file.path(base, "data", "raw", "iris.txt"), sep = "\t")
+head(iris_txt_wrong, 3)     # the column names have become the first row of data!
+
+iris_txt <- read.table(file.path(base, "data", "raw", "iris.txt"),
+                       header = TRUE, sep = "\t")
+head(iris_txt, 3)
+```
+
+## CSV files: `read.csv()` and `write.csv()`
+
+CSV stands for *comma-separated values*. It is the most widely used format to store and share tabular data, and it can be opened with any spreadsheet program or text editor. `read.csv()` and `write.csv()` are versions of `read.table()` and `write.table()` with the arguments already set for this format (`header = TRUE`, `sep = ","`, `dec = "."`).
+
+```{r csv-1}
+write.csv(iris, file = file.path(base, "data", "raw", "iris.csv"), row.names = FALSE)
+
+iris_csv <- read.csv(file.path(base, "data", "raw", "iris.csv"))
+head(iris_csv, 3)
+```
+
+::: {.tip}
+**Commas or semicolons?** In many European countries (Spain included) the comma is the decimal mark, so spreadsheet programs save "CSV" files using `;` to separate columns and `,` for decimals. To read and write these files, use `read.csv2()` and `write.csv2()`. If you import a file and all your data end up in a single column, you have probably used the wrong separator.
+:::
+
+```{r csv-2}
+write.csv2(iris, file = file.path(base, "data", "raw", "iris_semicolon.csv"), row.names = FALSE)
+readLines(file.path(base, "data", "raw", "iris_semicolon.csv"), n = 3)   # look inside the file
+iris_csv2 <- read.csv2(file.path(base, "data", "raw", "iris_semicolon.csv"))
+```
+
+The `readr` package (part of the `tidyverse`) provides `read_csv()` and `write_csv()`, which are faster for large files and return a tibble. They work in a very similar way:
+
+```{r csv-3, eval = FALSE}
+library(readr)
+write_csv(iris, file.path(base, "data", "raw", "iris.csv"))
+iris_readr <- read_csv(file.path(base, "data", "raw", "iris.csv"))
+```
+
+## Always check your data after importing them
+
+After importing a file, always check that R has read it correctly: the number of rows and columns, the column names and, above all, the **type of each column**.
+
+```{r check-1}
+dim(iris_csv)        # number of rows and columns
+names(iris_csv)      # column names
+str(iris_csv)        # structure: type of each column
+summary(iris_csv)
+```
+
+Notice that `Species` has been imported as `chr` (character), not as a factor as in the original `iris`. Text files do not store the type of each column, so this information is lost when we export to `.txt` or `.csv`. We can convert it back:
+
+```{r check-2}
+iris_csv$Species <- factor(iris_csv$Species)
+str(iris_csv)
+```
+
+::: {.note}
+A very common problem: if a numeric column contains some text (for example `"<0.1"`, `"n.d."` or a comma as decimal mark), R will import the **whole column as character**. `str()` helps you detect this immediately.
+:::
+
+## Excel files
+
+Excel files can contain several sheets, so when reading them we have to indicate which sheet we want. We recommend two lightweight packages that do not require any additional software:
+
+- `readxl` (part of the `tidyverse`) to **read** `.xls` and `.xlsx` files, with `read_excel()`;
+- `writexl` to **write** `.xlsx` files, with `write_xlsx()`.
+
+```{r excel-1, eval = FALSE}
+install.packages(c("readxl", "writexl"))
+library(readxl)
+library(writexl)
+
+write_xlsx(iris, file.path(base, "data", "raw", "iris.xlsx"))
+
+excel_sheets(file.path(base, "data", "raw", "iris.xlsx"))          # names of the sheets in the file
+iris_xlsx <- read_excel(file.path(base, "data", "raw", "iris.xlsx"),
+                        sheet = 1)                                  # by position or by name
+```
+
+Other useful arguments of `read_excel()` are `range` (to read only some cells, e.g. `range = "A1:D50"`), `skip` (to skip the first rows) and `na` (how missing values are written).
+
+::: {.note}
+You may find older tutorials that use the `xlsx` package (`read.xlsx()`, `write.xlsx()`). It requires Java to be installed on your computer, which often causes installation problems, so we recommend `readxl` and `writexl` instead. If you need to write files with several sheets or with formatting, have a look at the `openxlsx` package.
+:::
+
+## R's own formats
+
+R has its own formats to save data. Their great advantage is that they **keep the structure of the objects exactly as they are in R**: factors and their levels, dates, column types, and any type of object (lists, models, spatial data...), not only tables. Text and Excel formats lose this information.
+
+A good general strategy is:
+
+- keep your **raw data** in open formats (`.csv`, `.txt`), which anyone can read with any program;
+- save your **processed data and results** in R formats (`.rds`), so that you can load them exactly as they were.
+
+### `.RData` files
+
+An `.RData` file can store **one or several objects**, keeping their names. We already used `save.image()` to save the whole session. To save only some objects, use `save()`:
+
+```{r rdata-1}
+save(iris, iris_csv, file = file.path(base, "data", "clean", "iris_objects.RData"))
+```
+
+To load them, use `load()`. Note that we do not assign the result to an object: the objects are restored **with their original names**, overwriting any object in your session with the same name.
+
+```{r rdata-2}
+rm(iris, iris_csv)
+load(file.path(base, "data", "clean", "iris_objects.RData"))
+ls()
+```
+
+### `.rds` files
+
+An `.rds` file stores **a single object**, and does **not** keep its name. When you read it, you choose the name you want to give it. This is usually more convenient and safer than `.RData`, because loading a file never overwrites objects in your session without you noticing.
+
+We use the base R functions `saveRDS()` and `readRDS()`:
+
+```{r rds-1}
+saveRDS(iris, file = file.path(base, "data", "clean", "iris.rds"))
+
+iris_rds <- readRDS(file.path(base, "data", "clean", "iris.rds"))
+str(iris_rds)      # Species is still a factor
+identical(iris, iris_rds)
+```
+
+The `readr` package has equivalent functions, `write_rds()` and `read_rds()`.
+
+## Choosing files interactively
+
+If you do not remember the path of a file, `file.choose()` opens a window to browse your computer, and you can use it inside any import function. RStudio also has an **Import Dataset** button in the Environment tab, which shows a preview of the data and writes the import code for you. Both are handy, but always copy the resulting code (with a relative path) into your script, so that your analysis can be repeated.
+
+```{r choose-1, eval = FALSE}
+my_data <- read.csv(file.choose())
+```
+
+# Summary
+
+| Task | Functions |
+|:--|:--|
+| List / remove objects in the session | `ls()`, `rm()`, `rm(list = ls())` |
+| Save / restore the whole session | `save.image()`, `load()` |
+| Show / change the working directory | `getwd()`, `setwd()` (better: use an RStudio Project) |
+| Build a path | `file.path()`, `here::here()` |
+| Create, check, list folders | `dir.create()`, `dir.exists()`, `list.dirs()` |
+| List files and get information about them | `list.files()`, `file.exists()`, `basename()`, `dirname()`, `tools::file_ext()` |
+| Copy, rename, delete files and folders | `file.copy()`, `file.rename()`, `file.remove()`, `unlink()` |
+| Download and unzip | `download.file()`, `unzip()` |
+| Text files (any separator) | `read.table()`, `write.table()` |
+| CSV files | `read.csv()`, `write.csv()`; with `;` and decimal comma: `read.csv2()`, `write.csv2()` |
+| Excel files | `readxl::read_excel()`, `writexl::write_xlsx()` |
+| Several R objects, with their names | `save()`, `load()` (`.RData`) |
+| One R object, keeping its structure | `saveRDS()`, `readRDS()` (`.rds`) |
+| Check imported data | `dim()`, `names()`, `str()`, `summary()` |
+
+# Practice
+
+The exercises are organised in two levels. **Level 1** covers the basic concepts of this session, step by step. **Level 2** is intended for students who already have some experience with R, or who have completed Level 1 and want to go further. Write all your answers in an R script and add comments explaining each step.
+
+## Level 1: Getting started
+
+**Exercise 1. Your first project.** Create a new RStudio Project called `GLOBE_session` in a folder of your choice. Check with `getwd()` that the working directory is the project folder.
+
+**Exercise 2. Folder structure.** From R, create the folders `data/raw`, `data/clean`, `scripts` and `figures` inside your project. Check with `list.dirs()` that they have been created, and save your script in the `scripts` folder.
+
+**Exercise 3. Exporting and importing a CSV file.** Export the `airquality` dataset to `data/raw/airquality.csv` without row names. Remove `airquality` from your session with `rm()` and import the file again as `air`. Use `str()` to compare it with the original dataset.
+
+**Exercise 4. Text files.** Export `airquality` as a tab-separated `.txt` file. Import it with `read.table()`, first without and then with `header = TRUE`. What is the difference?
+
+**Exercise 5. Sessions.** Use `ls()` to list the objects in your session. Save the session with `save.image()`, clear it with `rm(list = ls())`, and restore it with `load()`.
+
+## Level 2: Going further
+
+**Exercise 6. Factors and file formats.** Convert the column `Month` of `airquality` into a factor with the labels `"May"`, `"June"`, `"July"`, `"August"` and `"September"`. Save the result as a `.csv` file and as an `.rds` file, import both files again and compare them with `str()`. Which format keeps the factor?
+
+**Exercise 7. `.RData` versus `.rds`.** Create an object called `x` with the value 1, save it in an `.RData` file, change its value to 2, and load the file. What is the value of `x` now? Repeat the experiment with `saveRDS()` and `readRDS()`. Which format is safer, and why?
+
+**Exercise 8. Semicolons and decimal commas.** Export `iris` with `write.csv2()`. Try to import it with `read.csv()` and then with `read.csv2()`. What happens in each case? Look at the first lines of the file with `readLines()` to understand why.
+
+**Exercise 9. Reading many files at once.** Split `iris` into three data frames, one per species, and save each of them as a separate `.csv` file in `data/raw` (e.g. `iris_setosa.csv`). Then, using `list.files()` with the `pattern` argument and `lapply()`, read the three files at once and combine them again into a single data frame with `do.call(rbind, ...)`. Check that it has 150 rows.
+
+**Exercise 10. Excel.** Install `readxl` and `writexl`. Export `iris` to an Excel file, open it in a spreadsheet program, add a second sheet with any small table, and save it. Import both sheets into R using `excel_sheets()` and `read_excel()`.
+
+# License and citation
+
+These materials are part of the course *Introduction to R for Data Science and Statistical Data Analysis* (Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos). The complete and most up-to-date version of all course materials is available at <https://github.com/juliachacon/globe-r-stats>.
+
+This tutorial is licensed under a [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). You are free to share and adapt it, provided that you give appropriate credit. The GLOBE and URJC logos are not covered by this licence.
+
+**How to cite:** Chacón Labella, J. (2026). *Section I · Organising your work: sessions, projects, directories and data files*. In: *Introduction to R for Data Science and Statistical Data Analysis*. Teaching materials, Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos. <https://github.com/juliachacon/globe-r-stats>
