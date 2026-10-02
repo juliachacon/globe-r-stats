@@ -640,7 +640,7 @@ surveys$site_B$abundance          # one column of that data frame
 
 When a list contains many similar elements, we often want to apply the same operation to each of them. The function `lapply()` applies a function to every element of a list and returns a **list**; `sapply()` does the same but **simplifies** the result into a vector when possible.
 
-When the operation needs more than one step, we write it as a small function with the structure `function(x) operation`, where `x` stands for each element of the list in turn. We will learn to write our own functions later in the course; for now, read `function(site) sum(site$abundance)` as "for each site, add up its abundances".
+When the operation needs more than one step, we write it as a small function with the structure `function(x) operation`, where `x` stands for each element of the list in turn. We will learn to write our own functions later in the course; for now, read `function(site) sum(site$abundance)` as "for each site, add up its abundances". In Session 5 we will see, step by step, what happens inside `lapply()`.
 
 ```{r list-apply}
 # Total abundance in each site
