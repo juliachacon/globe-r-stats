@@ -1,5 +1,5 @@
 ---
-title: "Section I · Data management and filtering of biodiversity data"
+title: "Section I · Data management with base R"
 author: "Julia Chacón Labella"
 date: "Academic year 2026/27"
 output:
@@ -47,7 +47,7 @@ h1.title, h4.author, h4.date { display: none; }
 <div><img class="urjc" src="../assets/logos/urjc_logo.png" alt="Universidad Rey Juan Carlos"></div>
 </div>
 <div class="programme">Erasmus Mundus Joint Master in Global Change Ecology and Biodiversity Management</div>
-<h1>Section I · Data management and filtering of biodiversity data</h1>
+<h1>Section I · Data management with base R</h1>
 <div class="meta">Julia Chacón Labella · Universidad Rey Juan Carlos · Academic year 2026/27</div>
 <div class="meta" style="font-size: 0.85em; margin-top: 4px;">Course materials: <a href="https://github.com/juliachacon/globe-r-stats">github.com/juliachacon/globe-r-stats</a> · Licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></div>
 </div>
@@ -71,335 +71,446 @@ knitr::opts_chunk$set(
 
 By the end of this session you will be able to:
 
-- combine vectors, matrices and data frames with `cbind()`, `rbind()` and `merge()`;
-- explore and reorganise data with `rowSums()`, `colSums()`, `sort()`, `order()`, `t()`, `rep()` and `unique()`;
-- select subsets of data using square brackets, `subset()` and `which()`;
-- identify and remove missing values (`NA`);
-- create nominal and ordered factors.
+- explore a dataset and detect duplicated records and missing values;
+- select columns and filter rows with square brackets, `which()` and `subset()`, including conditions with `%in%`;
+- create, recode and rename variables with `ifelse()` and `cut()`;
+- sort data frames with `order()`;
+- combine tables with `rbind()`, `cbind()` and `merge()`;
+- find, remove and replace missing values;
+- summarise data by groups with `aggregate()`;
+- distinguish long and wide formats and build a site × species table with `xtabs()`.
 :::
 
-# Data management and preparation
+# Data management in R
 
-Data management refers to the tasks of combining, joining, transposing, reorganising, deleting, replacing and modifying our data. It is one of the tasks that most often causes problems for R users. We will look at some basic and very useful functions to manage our data.
+Data management (also called *data wrangling*) includes all the tasks we do to prepare our data before analysing them: exploring, selecting, filtering, creating new variables, sorting, combining tables, dealing with missing values and summarising. In real projects, these tasks usually take much more time than the analysis itself, so it is worth learning to do them well.
 
-## Functions to combine data
+In this session we will do all these tasks with **base R**, i.e. with the functions that come with R, without installing any package. In Session 6 we will do **exactly the same tasks** with the `tidyverse`, so that you can compare both approaches.
 
-Two very useful and widely used functions are `cbind()` and `rbind()`. Both allow us to combine vectors, matrices or data frames by columns or by rows.
+## Our example dataset
 
-The `cbind()` function combines vectors or lists by columns. In other words, it lets us paste columns one after another. In the case of data frames, the columns must have the same number of rows.
+Throughout this session we will use a small vegetation survey. In five plots we recorded the species present, their abundance (number of individuals) and their mean height. Each **row is one species in one plot** (one record), and each **column is a variable**.
 
-Let's look at this example using `cbind()` with matrices:
-
-```{r bind-1, echo=TRUE}
-x <- matrix(c(1,2,3,4),2,2) # create a 2 x 2 matrix
-y <- c(5,6) # I want to add an extra column. First, I create the vector I want to paste.
-x
-y
-z <- cbind(x,y) # bind the new vector to the matrix
-z
+```{r data-survey}
+survey <- data.frame(
+  plot      = c("P1", "P1", "P1", "P2", "P2", "P3", "P3", "P3", "P3",
+                "P4", "P4", "P5", "P5", "P5"),
+  habitat   = c("forest", "forest", "forest", "shrubland", "shrubland",
+                "forest", "forest", "forest", "forest",
+                "grassland", "grassland", "shrubland", "shrubland", "shrubland"),
+  altitude  = c(1250, 1250, 1250, 980, 980, 1400, 1400, 1400, 1400,
+                1600, 1600, 1050, 1050, 1050),
+  species   = c("Quercus ilex", "Pinus pinea", "Cistus ladanifer",
+                "Cistus ladanifer", "Lavandula stoechas",
+                "Quercus ilex", "Pinus sylvestris", "Juniperus oxycedrus", "Cistus ladanifer",
+                "Festuca indigesta", "Lavandula stoechas",
+                "Cistus ladanifer", "Retama sphaerocarpa", "Lavandula stoechas"),
+  abundance = c(12, 5, 30, 45, 18, 8, 15, 4, NA, 60, 7, 38, 9, NA),
+  height_cm = c(650, 900, 80, 95, 40, 520, 1100, 210, 70, 25, 35, 100, 180, 45)
+)
 ```
 
-The `rbind()` function is similar, but it combines vectors or lists by rows. That is, it lets us add rows. They must therefore have the same number of columns.
+We will also use a second table with some information about each species (its family and growth form), which we will combine with the survey later:
 
-```{r bind-2, echo=TRUE}
-x
-y
-z <- rbind(x,y) # I can also add it as a row
-z
+```{r data-traits}
+traits <- data.frame(
+  species     = c("Quercus ilex", "Pinus pinea", "Pinus sylvestris", "Cistus ladanifer",
+                  "Lavandula stoechas", "Juniperus oxycedrus", "Retama sphaerocarpa",
+                  "Quercus pyrenaica"),
+  family      = c("Fagaceae", "Pinaceae", "Pinaceae", "Cistaceae",
+                  "Lamiaceae", "Cupressaceae", "Fabaceae", "Fagaceae"),
+  growth_form = c("tree", "tree", "tree", "shrub", "shrub", "shrub", "shrub", "tree")
+)
 ```
 
-Another example with a data frame:
+::: {.note}
+Notice that the two tables do not contain exactly the same species: *Festuca indigesta* appears in the survey but not in `traits`, and *Quercus pyrenaica* appears in `traits` but not in the survey. This is very common in real data, and we will see why it matters when we combine tables.
+:::
 
-```{r bind-3, echo=TRUE}
-data("Orange")
-head(Orange)
-dim(Orange)
+# Exploring the data
 
-ID <- c(1:35)
-newOrange <- cbind(Orange,ID)
+Before modifying a dataset, always explore it. Most data problems (wrong types, typos, missing values, duplicated rows) are detected at this stage.
 
-newRow <- c(5, 20, 115, 36)
-newOrange <- rbind(newOrange,newRow)
-
-# I can add multiple rows
-newRow2 <- c(5, 118, 62, 37)
-newRow3 <- c(5, 110, 32, 38)
-newOrange <- rbind(newOrange,newRow2, newRow3)
-
-tail(newOrange)
-
+```{r explore-1}
+dim(survey)        # number of rows and columns
+names(survey)      # column names
+head(survey)       # first 6 rows
+str(survey)        # type of each column
+summary(survey)    # summary of each column (notice the NAs in abundance)
 ```
 
-The `merge()` function joins two data frames by a field they have in common. That common field must be a shared column or row, and it must have the same name in both data frames.
+To know which values a variable takes, and how many times each appears, use `unique()` and `table()`:
 
-```{r bind-4, echo=TRUE}
-set.seed(123) # for reproducibility of the random values below
-
-species <- data.frame(id = 1:3, name = c("Betula", "Quercus", "Abies"))
-
-dimensions <- data.frame(id = c(1, 1, 1, 2, 2, 3, 3, 3, 1),
-                         height = c(3,2,9,12,13, 5, 10, 13, 3),
-                         diam = 100 * runif(9))
-species
-dimensions
-
-mydata <- merge(species, dimensions) # they will be joined by the common field, even if I don't specify it
-
-head(mydata)
-
-mydata2 <- merge(species, dimensions, by="id") # if there are several common fields, we must specify the one we want to use for the join
-
-head(mydata2)
-
+```{r explore-2}
+unique(survey$species)           # species recorded
+length(unique(survey$species))   # number of different species
+table(survey$habitat)            # number of records (rows) per habitat
+table(survey$plot)               # number of records per plot
 ```
 
-## Data exploration
+::: {.tip}
+**Be careful when interpreting `table()`:** it counts **rows**, not plots. `table(survey$habitat)` tells us how many species records there are in each habitat, not how many plots of each habitat we sampled.
+:::
 
-To manage data correctly, it is very important to explore the datasets carefully first. We have already seen some functions that show us the structure of a dataset, such as `head()`, `tail()` or `table()`. Before going further, we will look at other simple functions that let us explore and reorganise data.
+`duplicated()` detects rows that are exact copies of a previous row, a common error when data are typed or copied by hand. Let's create a copy of the survey with a duplicated row to see how it works:
 
-Let's install and load the `vegan` package and the `BCI` dataset:
-
-```{r explore-1, echo=TRUE, eval=FALSE}
-install.packages("vegan")
-library(vegan)
+```{r explore-3}
+survey_dup <- rbind(survey, survey[3, ])   # add a copy of row 3 at the end
+duplicated(survey_dup)                     # the last row is TRUE: it is a duplicate
+survey_dup[!duplicated(survey_dup), ]      # keep only the non-duplicated rows
 ```
 
-And let's explore it a little:
+# Selecting and filtering data
 
-```{r explore-2, echo=TRUE, eval=FALSE}
-data("BCI")
-?BCI
-head(BCI) # community composition table (inventory, counts)
+## Selecting columns
+
+As we saw in Session 2, we can select columns with square brackets `[rows, columns]`, by position or by name, or with `$`:
+
+```{r select-1}
+survey[, 4]                           # fourth column (returns a vector)
+survey[, c("plot", "species")]        # several columns by name (returns a data frame)
+survey$species                        # one column by name
 ```
 
-The first two functions we will see are `rowSums()` and `colSums()`. They compute sums by rows and by columns. The `BCI` dataset is a data frame containing an inventory of tree species on Barro Colorado Island. It is a count of the number of individuals per species in 50 plots (rows), for a total of 225 species (columns).
+Selecting by name is safer than selecting by position: if the order of the columns changes, your code will still select the right ones.
 
-If we sum the content of each row, we will know the number of trees found in each plot, regardless of species.
+## Filtering rows
 
-```{r explore-3, echo=TRUE, eval=FALSE}
-rowSums(BCI)
+To keep only the rows that meet a condition, we write the condition in the rows position. The condition is a **logical vector** (`TRUE`/`FALSE`), and R keeps the rows that are `TRUE`:
+
+```{r filter-1}
+survey$habitat == "forest"                 # the logical vector
+survey[survey$habitat == "forest", ]       # rows of forest plots
 ```
 
-If we sum the content of each column, we will know the total number of individuals of each species across all plots.
+Conditions can be combined with `&` (and), `|` (or) and `!` (not):
 
-```{r explore-4, echo=TRUE, eval=FALSE}
-colSums(BCI)
+```{r filter-2}
+survey[survey$habitat == "forest" & survey$altitude > 1300, ]      # forest AND above 1300 m
+survey[survey$habitat == "grassland" | survey$altitude < 1000, ]   # grassland OR below 1000 m
+survey[survey$habitat != "forest", ]                               # NOT forest
 ```
 
-Other interesting functions are `sort()` and `order()`. They are used to order the values of a vector.
+To check whether the values belong to a set of options, use the operator `%in%`. It is much shorter than writing many conditions with `|`, and very useful to select a list of species:
 
-```{r explore-5, echo=TRUE}
-w <- c(2,5,2,3,4,5,5,1,1,4,7,NA,9) # create a vector
-w
-sort(w) # by default, sort() orders in increasing order (and drops NAs)
-sort(w, decreasing=TRUE) # I can ask for decreasing order
-sort(w, decreasing=TRUE, na.last=TRUE) # we ask it to keep the NAs at the end
+```{r filter-3}
+pines_oaks <- c("Pinus pinea", "Pinus sylvestris", "Quercus ilex")
+survey[survey$species %in% pines_oaks, ]
+survey[!(survey$species %in% pines_oaks), ]     # all the other species
 ```
 
-The `order()` function works in increasing order, but it does not return the sorted data. Instead, it returns the positions of the elements according to their value, leaving the `NA`s at the end. It can be a bit confusing at first.
+Rows and columns can be selected at the same time:
 
-```{r explore-6, echo=TRUE}
-w
-order(w) # the 8th element has the lowest value (1), element 13 has the highest value, element 12 is an NA
-order(-w) # decreasing order
+```{r filter-4}
+survey[survey$habitat == "forest", c("plot", "species", "abundance")]
 ```
 
-```{r explore-7, echo=TRUE, eval=FALSE}
-# Example to see the difference between sort() and order()
-sort(iris$Petal.Length)
-order(iris$Petal.Length)
-iris[order(iris$Petal.Length),]
+## Filtering with missing values: `which()` and `subset()`
+
+Look carefully at what happens when we filter a column that contains `NA`:
+
+```{r filter-na-1}
+survey[survey$abundance > 20, ]
 ```
 
-Transposing matrices and data frames is very useful. It is done with the `t()` function.
+The rows with `NA` in `abundance` appear as rows full of `NA`. This is because R does not know whether `NA > 20` is `TRUE` or `FALSE`, so the result of the condition is `NA`. There are two easy ways to avoid this problem. The function `which()` returns the **positions** of the `TRUE` values, ignoring the `NA`:
 
-When you transpose a data frame, it is transposed as a matrix:
-
-```{r explore-8, echo=TRUE}
-head(iris)
-iris.t <- t(iris) # transpose iris with the t() function
-# head(iris.t) # you can check how it looks
-class(iris.t) # we check that it has been converted into a matrix. Be careful with this!
-iris.t.df <- as.data.frame(iris.t) # you could convert it back into a data frame
+```{r filter-na-2}
+survey$abundance > 20
+which(survey$abundance > 20)
+survey[which(survey$abundance > 20), ]
 ```
 
-You can also transpose a matrix:
+The function `subset()` also ignores rows where the condition is `NA`, and its syntax is easier to read because we do not need to repeat the name of the data frame. The argument `select` chooses the columns:
 
-```{r explore-9, echo=TRUE}
-m <- matrix(data=c(101:112), nrow=3, ncol=4) # create a matrix
-tm <- t(m)
+```{r filter-na-3}
+subset(survey, abundance > 20)
+subset(survey, abundance > 20, select = c(plot, species, abundance))
+subset(survey, habitat == "shrubland", select = -altitude)    # all columns except altitude
 ```
 
-If you transpose a vector, you get a matrix with a single row:
+::: {.tip}
+**Key rule:** when the column you filter by contains `NA`, use `which()` inside the brackets or `subset()`. Otherwise you will get rows full of `NA`.
+:::
 
-```{r explore-10, echo=TRUE}
-v <- c("flower", "flower", "thing")
-tv <- t(v)
+# Creating and modifying variables
+
+## New variables
+
+To create a new column, we assign a value to a column name that does not exist yet. Most operations in R are **vectorised**: they are applied to every element of the column at once.
+
+```{r mutate-1}
+survey$height_m <- survey$height_cm / 100          # change units
+survey$log_abundance <- log(survey$abundance + 1)  # log-transformation (+1 to avoid log(0))
+head(survey)
 ```
 
-The `rep()` function repeats elements as many times as we indicate. The `unique()` function returns the unique values, that is, each value that appears at least once.
+To modify an existing column, we simply assign it a new value, and to delete a column we assign it `NULL`:
 
-```{r explore-11, echo=TRUE}
-c("flower", "flower", "thing") # create a vector with three elements
-rep(c("flower", "flower", "thing"), times=3) # now we repeat it three times
-unique(rep(c("flower", "flower", "thing"), times=3)) # tells us which elements appear at least once
-
-thing <- rep(c("flower", "flower", "thing"), times=3) # repeat the above, giving it a name
-unique(thing)
+```{r mutate-2}
+survey$log_abundance <- NULL
+names(survey)
 ```
 
-## Subsetting and selecting data
+## Recoding variables with `ifelse()`
 
-First, let's remember how to select or access data in a data frame using square bracket notation. We will look at a quick example to review some ideas. For this, we load the `iris` dataset.
+`ifelse()` creates a new variable based on a condition. It has three arguments: the condition, the value if `TRUE` and the value if `FALSE`.
 
-```{r subset-1, echo=TRUE}
-data("iris")
-iris1 <- iris[1:15,]  # select the first 15 rows (observations)
-iris2 <- iris[,3:4] # select columns (variables) 3 to 4
-iris3 <- iris[1:15, 3:4] # select a block: rows 1 to 15 of columns 3 and 4
+```{r recode-1}
+survey$dominant <- ifelse(survey$abundance >= 30, "yes", "no")
+survey[, c("species", "abundance", "dominant")]
 ```
 
-To select specific observations (rows) and specific variables (columns) we can combine strategies, for example:
+Notice that the rows with `NA` in `abundance` also get `NA` in the new variable, which is correct: we cannot know whether those species were dominant.
 
-```{r subset-2, echo=TRUE}
-iris.ss1 <- iris[1:15, c(1,4)]
+To convert a numeric variable into classes, the function `cut()` is very useful. The argument `breaks` gives the limits of the classes, and `labels` their names. The result is a factor:
+
+```{r recode-2}
+survey$alt_class <- cut(survey$altitude,
+                        breaks = c(0, 1000, 1400, 2000),
+                        labels = c("low", "mid", "high"))
+table(survey$plot, survey$alt_class)
 ```
 
-To select only the cases in which a variable takes a given value, for example, to select all data where the species variable equals *Iris setosa*:
+By default the intervals include the upper limit, so a plot at exactly 1400 m is classified as `"mid"`.
 
-```{r subset-3, echo=TRUE}
-iris.ss2 <- iris[iris$Species == "setosa",] # rows and columns of iris when the species is Iris setosa
+## Renaming variables
+
+To rename a column, we change the corresponding element of `names()`:
+
+```{r rename-1}
+survey_renamed <- survey
+names(survey_renamed)[names(survey_renamed) == "height_cm"] <- "height"
+names(survey_renamed)
 ```
 
-We may also want the data to meet several conditions. For example, to select all data with sepal length greater than 7 and where the species variable equals *Iris virginica*:
+# Sorting data
 
-```{r subset-4, echo=TRUE}
-iris.ss3 <-  iris[iris$Sepal.Length > 7 & iris$Species == "virginica",]
-# rows and columns of iris when the species is Iris virginica and sepal length is greater than 7
-iris.ss3
+`sort()` sorts the values of a vector, and `order()` returns the **positions** that would sort it. By default both work in increasing order, and `sort()` drops the `NA`s:
+
+```{r sort-1}
+w <- c(2, 5, 2, 3, NA, 9, 1)
+sort(w)
+sort(w, decreasing = TRUE)
+sort(w, na.last = TRUE)       # keep the NAs at the end
+order(w)                      # the 7th element is the smallest, the 5th (NA) goes last
 ```
 
-To select subsets of data in a data frame we can also use the `subset()` function. Let's look at an example with a new dataset called `airquality`:
+To sort the rows of a data frame we use `order()` inside the brackets:
 
-```{r subset-5, echo=TRUE}
-data("airquality")
-head(airquality)
-
-air.ss <- subset(airquality, Temp > 80, select = c(Ozone, Temp)) # select the variables Ozone and Temp for the cases with temperature above 80
-air.ss2 <- subset(airquality, Day == 1, select = -Temp) # select all variables except Temp for all cases where Day equals 1
-air.ss3 <- subset(airquality, select = Ozone:Wind) # select the variables from Ozone to Wind
+```{r sort-2}
+survey[order(survey$abundance, decreasing = TRUE), c("plot", "species", "abundance")]
 ```
 
-Let's look at another example using the `subset()` function and the `iris` dataset:
+We can sort by more than one variable. For example, by plot and, within each plot, from the most to the least abundant species (the minus sign reverses the order of a numeric variable):
 
-```{r subset-6, echo=TRUE}
-head(iris)
-iris.ss4 <- subset(iris, Sepal.Width > 3.9, select = c(Sepal.Length, Species))
-iris.ss5 <- subset(iris, Sepal.Width == 3.5, select = c(Sepal.Width:Species))
-
+```{r sort-3}
+survey[order(survey$plot, -survey$abundance), c("plot", "species", "abundance")]
 ```
 
-Another useful function to select data is `which()`. Let's see how to use `which()` and how to run the same command with `subset()` and with `[]`:
+# Combining data
 
-```{r subset-7, echo=TRUE}
-iris.ss6 <- iris[which(iris$Sepal.Width > 3.9),] # from iris, select all cases with Sepal.Width greater than 3.9
-iris.ss7 <- subset(iris, Sepal.Width > 3.9) # the same using subset()
-iris.ss8 <- iris[iris$Sepal.Width > 3.9,] # the same using square brackets
+## Binding rows and columns: `rbind()` and `cbind()`
+
+`rbind()` adds rows and `cbind()` adds columns. With data frames, `rbind()` needs the same column names in both tables, and `cbind()` needs the same number of rows:
+
+```{r bind-1}
+new_records <- data.frame(plot = "P6", habitat = "grassland", altitude = 1700,
+                          species = "Festuca indigesta", abundance = 52, height_cm = 30,
+                          height_m = 0.30, dominant = "yes", alt_class = "high")
+survey_extended <- rbind(survey, new_records)
+tail(survey_extended, 3)
+
+observer <- rep(c("Team A", "Team B"), times = 7)   # a vector with 14 values, one per row
+survey_obs <- cbind(survey, observer)
+head(survey_obs, 3)
 ```
 
-We can make the selection a bit more complex. Using `which()` and `[]`, we select all cases in the `iris` data frame with `Sepal.Width` values greater than 3.9. From this selection, we only want the variables `Sepal.Length` and `Species`, which correspond to columns 1 and 5.
+::: {.note}
+`cbind()` simply pastes the vector next to the table, assuming that the order of the values matches the order of the rows. If you need to combine two tables using a shared variable (such as the species name), use `merge()` instead.
+:::
 
-```{r subset-8, echo=TRUE}
-iris.ss9 <- iris[which(iris$Sepal.Width > 3.9),][,c(1,5)]
-iris.ss9
+## Joining tables with `merge()`
+
+`merge()` joins two data frames using a **key**, i.e. a column they have in common. This is how we add the family and growth form of each species to the survey:
+
+```{r merge-1}
+survey_traits <- merge(survey, traits, by = "species")
+survey_traits[, c("plot", "species", "family", "growth_form")]
+nrow(survey_traits)
 ```
 
-Another example combining `which()` and `[]`: we select all cases in the `iris` data frame with `Sepal.Width` equal to 3.5. From this selection, we only want the variables from `Sepal.Width` to `Species`, which correspond to columns 2 to 5.
+The result has only 13 rows: *Festuca indigesta* has disappeared, because it is not in the `traits` table. By default, `merge()` only keeps the rows whose key appears in **both** tables. The arguments `all.x` and `all` change this behaviour:
 
-```{r subset-9, echo=TRUE}
-iris.ss10 <- iris[which(iris$Sepal.Width == 3.5),][,c(2:5)]
-iris.ss10
+```{r merge-2}
+# keep all the rows of the first table (x = survey); missing traits are filled with NA
+survey_traits_all <- merge(survey, traits, by = "species", all.x = TRUE)
+survey_traits_all[survey_traits_all$species == "Festuca indigesta",
+                  c("plot", "species", "family", "growth_form")]
+
+# keep all the rows of both tables
+full <- merge(survey, traits, by = "species", all = TRUE)
+nrow(full)    # 14 records + 1 row for Quercus pyrenaica, which was not in the survey
 ```
 
-## Changing data structures and formats
+::: {.note}
+`merge()` returns the rows sorted by the key (here, alphabetically by species), not in the original order. Use `order()` if you need to sort them again.
+:::
 
-### Removing NAs
+# Missing values
 
-`NA` values are missing values. Sometimes we want to clean our datasets to remove `NA`s and prepare them for an analysis. Other times we want to keep them. Whether to remove or keep `NA`s depends on what we want to do. Let's learn how to remove them.
+Missing values (`NA`) are very common in field data. First, we need to find them:
 
-We identify them with the `is.na()` function. It is a logical function (`TRUE/FALSE`) that tells us which values of a vector are `NA` (`TRUE`) and which are not (`FALSE`).
-
-```{r na-1, echo=TRUE}
-v <- c(2,4,5,6,10,12,2,NA,NA,6,8,10) # create a vector containing missing values (NAs)
-v.NAs <- is.na(v)  # identify the NAs
-v.NAs
+```{r na-1}
+is.na(survey$abundance)            # which values are missing?
+sum(is.na(survey$abundance))       # how many? (TRUE counts as 1)
+colSums(is.na(survey))             # how many in each column?
+survey[is.na(survey$abundance), c("plot", "species", "abundance")]   # which records?
 ```
 
-Here we introduce the `!` symbol, which means "not" or "the opposite of". We can ask which values are not `NA`:
+Then, we decide what to do with them. Many functions have the argument `na.rm = TRUE` to ignore them in a calculation:
 
-```{r na-2, echo=TRUE}
-v[!v.NAs]  # Here we are saying "from v, select the opposite of v.NAs", i.e. everything that is not TRUE in the vector v.NAs
+```{r na-2}
+mean(survey$abundance)                  # NA
+mean(survey$abundance, na.rm = TRUE)    # mean of the known values
 ```
 
-The `!` symbol is widely used for subsetting. For example, `!=` means "not equal to":
+To remove the rows that contain any `NA`, use `complete.cases()` or `na.omit()`:
 
-```{r na-3, echo=TRUE}
-iris.ss11 <- iris[which(iris$Sepal.Width != 3.5),]
+```{r na-3}
+complete.cases(survey)                  # TRUE for the rows without any NA
+survey_complete <- survey[complete.cases(survey), ]
+nrow(survey_complete)
+nrow(na.omit(survey))                   # the same, in a single step
 ```
 
-We can also use the `complete.cases()` function, which is also a logical function (`TRUE/FALSE`).
+Sometimes we know what the missing value should be and we can replace it. For example, if the field protocol says that an empty cell means that no individuals were found:
 
-Now suppose we have a vector containing `NA`s and we want to keep only the complete cases. This situation is illustrated in the following example:
-
-```{r na-4, echo=TRUE}
-v
-v.complete <- complete.cases(v)
-v.complete # now the FALSE values are the NAs (careful!)
-v[v.complete] # select the complete cases from v, i.e. those that are TRUE
+```{r na-4}
+survey_zero <- survey
+survey_zero$abundance[is.na(survey_zero$abundance)] <- 0
+survey_zero$abundance
 ```
 
-### Factors
+::: {.tip}
+**Think before removing or replacing `NA`s.** Removing them reduces your sample size, and replacing them with 0 is only correct if a missing value really means "zero". A value that was not measured is not the same as a value of zero.
+:::
 
-Factors are a data type that stores categorical or qualitative variables. Although factors are an `R` data type, we explain them in this tutorial because they are generally used to prepare data for analyses that require factors. They are also widely used to make plots or figures in `R`.
+# Summarising data by groups with `aggregate()`
 
-By definition, they have a limited number of levels or categories. For example, sex would only have two levels, male/female (these would be nominal factors). They can also be numeric factors (e.g. sampling sites along an altitudinal gradient where we have 5 sites), they can take values 0 and 1... Factors are created with the `factor()` function.
+A very common task is to calculate a statistic for each group: the total abundance per plot, the mean height per habitat, etc. In base R, `aggregate()` does this with a **formula**: `variable ~ group`.
 
-```{r factors-1, echo=TRUE}
-sex <- c("male", "female", "male", "female", "male", "male", "female", "male", "male", "female", "female", "female")
-factor(sex) # in this case the as.factor() function would also work
+```{r aggregate-1}
+aggregate(abundance ~ plot, data = survey, FUN = sum)          # total abundance per plot
+aggregate(height_cm ~ habitat, data = survey, FUN = mean)      # mean height per habitat
+aggregate(species ~ plot, data = survey, FUN = length)         # number of records per plot
 ```
 
-We can see that when we convert the vector `sex` into a factor, it becomes a factor with two levels: female and male.
+We can summarise several variables at once with `cbind()`, and group by several variables with `+`:
 
-Factors can be nominal or ordinal. Nominal factors do not imply any order, such as sex. Ordinal factors do imply an order or gradation, such as the altitude of sampling sites on a mountain.
-
-Let's see how to specify an ordinal variable or factor (one with an order).
-
-```{r factors-2, echo=TRUE}
-sites <- c("High", "Low", "Low", "Medium", "Low", "Medium", "High") # sampling sites on a mountain
-factor(sites) # if I convert it into a factor, I see it has three levels: High, Low and Medium (in alphabetical order)
+```{r aggregate-2}
+aggregate(cbind(abundance, height_cm) ~ habitat, data = survey, FUN = mean)
+aggregate(abundance ~ habitat + alt_class, data = survey, FUN = sum)
 ```
 
-If I want them ordered by increasing altitude, then I want the levels to be: Low, Medium and High, in this order. I have to tell the `factor()` function that I want the factor to be ordered (with the `ordered` argument) and the order it should follow (the `levels` argument followed by a vector indicating the order).
+::: {.note}
+With the formula syntax, `aggregate()` removes the rows with `NA` in any of the variables used **before** calculating. That is why the results above do not return `NA`, but it also means that, when we summarised `abundance` and `height_cm` together, the heights of the two records without abundance were not used either.
+:::
 
-```{r factors-3, echo=TRUE}
-factor(sites, ordered = TRUE, levels = c("Low", "Medium", "High"))
-sites.f <- factor(sites, ordered = TRUE, levels = c("Low", "Medium", "High")) # I can save it
+In Session 5 we will see another base R function for group summaries, `tapply()`, and in Session 6 the `tidyverse` equivalent, `group_by()` and `summarise()`.
+
+# Reshaping data: wide and long formats
+
+The same data can be organised in two ways:
+
+- **Long format**: one row per observation. Our `survey` is in long format: each row is one species in one plot.
+- **Wide format**: one row per sampling unit, and one column per variable or per category. In community ecology, the typical wide format is the **site × species matrix**, with one row per plot and one column per species.
+
+In base R, `xtabs()` builds a site × species table from a long table:
+
+```{r reshape-1}
+site_species <- xtabs(abundance ~ plot + species, data = survey)
+site_species
 ```
 
-Sometimes, when we load data with character variables, they are stored as factors (this was the default behaviour of `read.csv()` and `data.frame()` before R 4.0.0; now you need `stringsAsFactors = TRUE`).
+Combinations that do not appear in the survey (a species not found in a plot) get a 0. Be careful: records with `NA` in `abundance` are removed before building the table, so they also appear as 0.
 
-If we are going to fit a regression, it is advisable to store categorical variables as factors (`R` will internally code the different levels of the factor as integers). For example, let's load the `iris` dataset, which is a data frame. The previous examples were with vectors, but remember that each variable or column of a data frame is a vector. We can ask whether the variable `Species` is a factor or, equivalently, whether it has levels.
+`t()` transposes a matrix or table, i.e. it swaps rows and columns:
 
-```{r factors-4, echo=TRUE}
-data("iris")
-head(iris)
-levels(iris$Species)
-is.factor(iris$Species)
-class(iris$Species)
+```{r reshape-2}
+t(site_species)    # now species are rows and plots are columns
 ```
 
-If we now save the `iris` dataset in `.csv` or `.xlsx` format, or any other non-`R` format, we would lose this internal factor structure. It can only be preserved if we save the data as `.RData` or `.rds`. This is one of the advantages of using `R`'s own formats. In this case it is not very important, because we can easily convert `Species` back into a factor after importing it, but in other cases it will be preferable to keep the data structure in an `R` format.
+::: {.tip}
+**Be careful with `t()` and data frames:** `t()` always returns a **matrix**. If you transpose a data frame with columns of different types, every value is converted into text. Use it only with numeric tables.
+:::
+
+Base R also has a `reshape()` function to convert between long and wide formats, but its syntax is quite difficult. In Session 6 we will learn `pivot_wider()` and `pivot_longer()`, which are much more intuitive.
+
+# Summary
+
+| Task | Base R |
+|:--|:--|
+| Explore | `str()`, `summary()`, `head()`, `dim()`, `unique()`, `table()`, `duplicated()` |
+| Select columns | `df[, c("a", "b")]`, `df$a` |
+| Filter rows | `df[condition, ]`, `df[which(condition), ]`, `subset()` |
+| Conditions | comparison operators (`==`, `!=`, `>`, `<`), logical operators (and, or, not) and `%in%` |
+| Create or modify variables | `df$new <- ...`, `ifelse()`, `cut()` |
+| Delete a column | `df$a <- NULL` |
+| Rename | `names(df)[names(df) == "old"] <- "new"` |
+| Sort | `sort()`, `df[order(df$a), ]` |
+| Combine tables | `rbind()`, `cbind()`, `merge()` (with `all.x`, `all`) |
+| Missing values | `is.na()`, `na.rm = TRUE`, `complete.cases()`, `na.omit()` |
+| Summarise by groups | `aggregate(y ~ group, data, FUN)` |
+| Wide table | `xtabs()`, `t()` |
+
+<!-- # Practice -->
+
+<!-- The exercises are organised in two levels. **Level 1** covers the basic concepts of this session, step by step. **Level 2** is intended for students who already have some experience with R, or who have completed Level 1 and want to go further. Write all your answers in an R script and add comments explaining each step. Start by creating the `survey` and `traits` data frames as shown at the beginning of this session. -->
+
+<!-- ## Level 1: Getting started -->
+
+<!-- **Exercise 1. Exploring.** How many records, plots and different species does `survey` contain? Which species appears in more plots? Which column has missing values? -->
+
+<!-- **Exercise 2. Filtering.** Using square brackets, select: -->
+
+<!-- a. the records of plot `P3`; -->
+<!-- b. the records of shrubland plots with more than 10 individuals (watch out for the `NA`s); -->
+<!-- c. the records of *Cistus ladanifer* and *Lavandula stoechas*, using `%in%`, keeping only the columns `plot`, `species` and `abundance`. -->
+
+<!-- Repeat b. using `subset()`. -->
+
+<!-- **Exercise 3. New variables.** Each plot has an area of 100 m². Create a new column `density` with the number of individuals per square metre. Then create a column `size` that takes the value `"tall"` when the mean height is above 1 m and `"short"` otherwise. -->
+
+<!-- **Exercise 4. Sorting.** Sort the survey from the tallest to the shortest species, showing only `plot`, `species` and `height_cm`. -->
+
+<!-- **Exercise 5. Missing values.** How many records have no abundance value? Calculate the mean abundance ignoring them, and create a new data frame without those records. -->
+
+<!-- ## Level 2: Going further -->
+
+<!-- **Exercise 6. Group summaries.** Using `aggregate()`, calculate: -->
+
+<!-- a. the total abundance in each habitat; -->
+<!-- b. the maximum height recorded in each plot; -->
+<!-- c. the number of species in each plot. -->
+
+<!-- **Exercise 7. Joining tables.** Join `survey` and `traits` keeping all the records of the survey. Then: -->
+
+<!-- a. Which records have no family assigned? Why? -->
+<!-- b. Calculate the total abundance of trees and of shrubs. -->
+<!-- c. What would change if you used `all = TRUE`? Check it. -->
+
+<!-- **Exercise 8. Classes.** Use `cut()` to classify the records into three height classes: below 1 m, 1–5 m, and above 5 m. Then use `table()` to count how many records of each class there are in each habitat. -->
+
+<!-- **Exercise 9. Site × species matrix.** Build a site × species table of abundances with `xtabs()`. Use `rowSums()` to obtain the total abundance of each plot, and `colSums()` to obtain the total abundance of each species. Then convert the table into presence/absence (1/0) and calculate the number of species per plot. -->
+
+<!-- **Exercise 10. Find the errors.** The following code should select the forest records with more than 10 individuals, sort them by abundance and add the family of each species. It contains four problems (one of them does not produce any error message). Find them and correct them. -->
+
+```{r ex-debug, eval = FALSE}
+forest <- survey[survey$habitat = "forest" & survey$abundance > 10, ]
+forest <- forest[order(forest$abundance)]
+forest <- merge(forest, traits, by = "Species")
+```
 
 # License and citation
 
@@ -407,4 +518,4 @@ These materials are part of the course *Introduction to R for Data Science and S
 
 This tutorial is licensed under a [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). You are free to share and adapt it, provided that you give appropriate credit. The GLOBE and URJC logos are not covered by this licence.
 
-**How to cite:** Chacón Labella, J. (2026). *Section I · Data management and filtering of biodiversity data*. In: *Introduction to R for Data Science and Statistical Data Analysis*. Teaching materials, Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos. <https://github.com/juliachacon/globe-r-stats>
+**How to cite:** Chacón Labella, J. (2026). *Section I · Data management with base R*. In: *Introduction to R for Data Science and Statistical Data Analysis*. Teaching materials, Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos. <https://github.com/juliachacon/globe-r-stats>
