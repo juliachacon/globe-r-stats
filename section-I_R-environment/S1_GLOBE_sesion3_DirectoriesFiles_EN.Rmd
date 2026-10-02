@@ -564,33 +564,33 @@ my_data <- read.csv(file.choose())
 | One R object, keeping its structure | `saveRDS()`, `readRDS()` (`.rds`) |
 | Check imported data | `dim()`, `names()`, `str()`, `summary()` |
 
-# Practice
+<!-- # Practice -->
 
-The exercises are organised in two levels. **Level 1** covers the basic concepts of this session, step by step. **Level 2** is intended for students who already have some experience with R, or who have completed Level 1 and want to go further. Write all your answers in an R script and add comments explaining each step.
+<!-- The exercises are organised in two levels. **Level 1** covers the basic concepts of this session, step by step. **Level 2** is intended for students who already have some experience with R, or who have completed Level 1 and want to go further. Write all your answers in an R script and add comments explaining each step. -->
 
-## Level 1: Getting started
+<!-- ## Level 1: Getting started -->
 
-**Exercise 1. Your first project.** Create a new RStudio Project called `GLOBE_session` in a folder of your choice. Check with `getwd()` that the working directory is the project folder.
+<!-- **Exercise 1. Your first project.** Create a new RStudio Project called `GLOBE_session` in a folder of your choice. Check with `getwd()` that the working directory is the project folder. -->
 
-**Exercise 2. Folder structure.** From R, create the folders `data/raw`, `data/clean`, `scripts` and `figures` inside your project. Check with `list.dirs()` that they have been created, and save your script in the `scripts` folder.
+<!-- **Exercise 2. Folder structure.** From R, create the folders `data/raw`, `data/clean`, `scripts` and `figures` inside your project. Check with `list.dirs()` that they have been created, and save your script in the `scripts` folder. -->
 
-**Exercise 3. Exporting and importing a CSV file.** Export the `airquality` dataset to `data/raw/airquality.csv` without row names. Remove `airquality` from your session with `rm()` and import the file again as `air`. Use `str()` to compare it with the original dataset.
+<!-- **Exercise 3. Exporting and importing a CSV file.** Export the `airquality` dataset to `data/raw/airquality.csv` without row names. Remove `airquality` from your session with `rm()` and import the file again as `air`. Use `str()` to compare it with the original dataset. -->
 
-**Exercise 4. Text files.** Export `airquality` as a tab-separated `.txt` file. Import it with `read.table()`, first without and then with `header = TRUE`. What is the difference?
+<!-- **Exercise 4. Text files.** Export `airquality` as a tab-separated `.txt` file. Import it with `read.table()`, first without and then with `header = TRUE`. What is the difference? -->
 
-**Exercise 5. Sessions.** Use `ls()` to list the objects in your session. Save the session with `save.image()`, clear it with `rm(list = ls())`, and restore it with `load()`.
+<!-- **Exercise 5. Sessions.** Use `ls()` to list the objects in your session. Save the session with `save.image()`, clear it with `rm(list = ls())`, and restore it with `load()`. -->
 
-## Level 2: Going further
+<!-- ## Level 2: Going further -->
 
-**Exercise 6. Factors and file formats.** Convert the column `Month` of `airquality` into a factor with the labels `"May"`, `"June"`, `"July"`, `"August"` and `"September"`. Save the result as a `.csv` file and as an `.rds` file, import both files again and compare them with `str()`. Which format keeps the factor?
+<!-- **Exercise 6. Factors and file formats.** Convert the column `Month` of `airquality` into a factor with the labels `"May"`, `"June"`, `"July"`, `"August"` and `"September"`. Save the result as a `.csv` file and as an `.rds` file, import both files again and compare them with `str()`. Which format keeps the factor? -->
 
-**Exercise 7. `.RData` versus `.rds`.** Create an object called `x` with the value 1, save it in an `.RData` file, change its value to 2, and load the file. What is the value of `x` now? Repeat the experiment with `saveRDS()` and `readRDS()`. Which format is safer, and why?
+<!-- **Exercise 7. `.RData` versus `.rds`.** Create an object called `x` with the value 1, save it in an `.RData` file, change its value to 2, and load the file. What is the value of `x` now? Repeat the experiment with `saveRDS()` and `readRDS()`. Which format is safer, and why? -->
 
-**Exercise 8. Semicolons and decimal commas.** Export `iris` with `write.csv2()`. Try to import it with `read.csv()` and then with `read.csv2()`. What happens in each case? Look at the first lines of the file with `readLines()` to understand why.
+<!-- **Exercise 8. Semicolons and decimal commas.** Export `iris` with `write.csv2()`. Try to import it with `read.csv()` and then with `read.csv2()`. What happens in each case? Look at the first lines of the file with `readLines()` to understand why. -->
 
-**Exercise 9. Reading many files at once.** Split `iris` into three data frames, one per species, and save each of them as a separate `.csv` file in `data/raw` (e.g. `iris_setosa.csv`). Then, using `list.files()` with the `pattern` argument and `lapply()`, read the three files at once and combine them again into a single data frame with `do.call(rbind, ...)`. Check that it has 150 rows.
+<!-- **Exercise 9. Reading many files at once.** Split `iris` into three data frames, one per species, and save each of them as a separate `.csv` file in `data/raw` (e.g. `iris_setosa.csv`). Then, using `list.files()` with the `pattern` argument and `lapply()`, read the three files at once and combine them again into a single data frame with `do.call(rbind, ...)`. Check that it has 150 rows. -->
 
-**Exercise 10. Excel.** Install `readxl` and `writexl`. Export `iris` to an Excel file, open it in a spreadsheet program, add a second sheet with any small table, and save it. Import both sheets into R using `excel_sheets()` and `read_excel()`.
+<!-- **Exercise 10. Excel.** Install `readxl` and `writexl`. Export `iris` to an Excel file, open it in a spreadsheet program, add a second sheet with any small table, and save it. Import both sheets into R using `excel_sheets()` and `read_excel()`. -->
 
 # License and citation
 
