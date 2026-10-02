@@ -1,0 +1,552 @@
+---
+title: "Section I · Data management with the tidyverse"
+author: "Julia Chacón Labella"
+date: "Academic year 2026/27"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
+    includes:
+      in_header: ../assets/latex/preamble.tex
+  html_document:
+    toc: yes
+    number_sections: no
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<style>
+p.caption {
+  font-size: 0.8em;
+}
+
+/* Header with logos (replaces the default title block in HTML) */
+h1.title, h4.author, h4.date { display: none; }
+.course-header { margin: 10px 0 30px; padding-bottom: 12px; border-bottom: 1px solid #ddd; }
+.course-header .logos { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+.course-header .logos p { margin: 0; }
+.course-header img.globe { height: 75px; }
+.course-header img.urjc  { height: 55px; }
+.course-header .programme { margin-top: 18px; color: #555; }
+.course-header h1 { margin-top: 8px; }
+.course-header .meta { color: #555; }
+
+/* Simple boxes for objectives, notes, key rules and practice */
+.objectives, .note, .tip, .practice {
+  padding: 10px 15px; margin: 18px 0;
+  background-color: #f7f7f7; border: 1px solid #ddd; border-left: 4px solid #999;
+}
+</style>
+
+```{=html}
+<div class="course-header">
+<div class="logos">
+<div><img class="globe" src="../assets/logos/globe_logo.png" alt="GLOBE – Global Change Ecology and Biodiversity Management"></div>
+<div><img class="urjc" src="../assets/logos/urjc_logo.png" alt="Universidad Rey Juan Carlos"></div>
+</div>
+<div class="programme">Erasmus Mundus Joint Master in Global Change Ecology and Biodiversity Management</div>
+<h1>Section I · Data management with the tidyverse</h1>
+<div class="meta">Julia Chacón Labella · Universidad Rey Juan Carlos · Academic year 2026/27</div>
+<div class="meta" style="font-size: 0.85em; margin-top: 4px;">Course materials: <a href="https://github.com/juliachacon/globe-r-stats">github.com/juliachacon/globe-r-stats</a> · Licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></div>
+</div>
+```
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+```{=latex}
+\newpage
+```
+
+::: {.objectives}
+**Learning objectives**
+
+By the end of this session you will be able to:
+
+- explain what tidy data are and what a tibble is;
+- chain operations with the pipe `%>%`;
+- select, filter, sort, create and rename variables with the main `dplyr` verbs;
+- summarise data by groups with `group_by()`, `summarise()` and `across()`;
+- join tables with `left_join()`, `inner_join()`, `full_join()` and check them with `anti_join()`;
+- reshape data with `pivot_wider()` and `pivot_longer()`;
+- translate between base R and `tidyverse` code.
+:::
+
+# The tidyverse
+
+In Session 4 we learnt to manage data with base R. In this session we will do **the same tasks** with the `tidyverse`, a collection of packages designed to work together, which share a common philosophy and syntax. The two packages we will use most are:
+
+- `dplyr`, to select, filter, create, sort, summarise and join data;
+- `tidyr`, to reshape data between wide and long formats and to tidy them.
+
+Their functions have names that are **verbs** describing what they do (`select()`, `filter()`, `arrange()`, `mutate()`, `summarise()`...), which makes the code very easy to read.
+
+Install the `tidyverse` once, and load it in each session:
+
+```{r install, eval = FALSE}
+install.packages("tidyverse")
+```
+
+```{r load}
+library(tidyverse)
+```
+
+When you load the `tidyverse`, R lists the packages it loads and warns you about **conflicts**: functions of the `tidyverse` that have the same name as functions of other packages already loaded. For example, `dplyr::filter()` masks `stats::filter()`. When two loaded packages have a function with the same name, R uses the one loaded last. If you need the other one, use the `package::function()` notation (Session 2).
+
+## Our example data
+
+We will use the same vegetation survey and species table as in Session 4, so that you can compare both approaches directly:
+
+```{r data}
+survey <- data.frame(
+  plot      = c("P1", "P1", "P1", "P2", "P2", "P3", "P3", "P3", "P3",
+                "P4", "P4", "P5", "P5", "P5"),
+  habitat   = c("forest", "forest", "forest", "shrubland", "shrubland",
+                "forest", "forest", "forest", "forest",
+                "grassland", "grassland", "shrubland", "shrubland", "shrubland"),
+  altitude  = c(1250, 1250, 1250, 980, 980, 1400, 1400, 1400, 1400,
+                1600, 1600, 1050, 1050, 1050),
+  species   = c("Quercus ilex", "Pinus pinea", "Cistus ladanifer",
+                "Cistus ladanifer", "Lavandula stoechas",
+                "Quercus ilex", "Pinus sylvestris", "Juniperus oxycedrus", "Cistus ladanifer",
+                "Festuca indigesta", "Lavandula stoechas",
+                "Cistus ladanifer", "Retama sphaerocarpa", "Lavandula stoechas"),
+  abundance = c(12, 5, 30, 45, 18, 8, 15, 4, NA, 60, 7, 38, 9, NA),
+  height_cm = c(650, 900, 80, 95, 40, 520, 1100, 210, 70, 25, 35, 100, 180, 45)
+)
+
+traits <- data.frame(
+  species     = c("Quercus ilex", "Pinus pinea", "Pinus sylvestris", "Cistus ladanifer",
+                  "Lavandula stoechas", "Juniperus oxycedrus", "Retama sphaerocarpa",
+                  "Quercus pyrenaica"),
+  family      = c("Fagaceae", "Pinaceae", "Pinaceae", "Cistaceae",
+                  "Lamiaceae", "Cupressaceae", "Fabaceae", "Fagaceae"),
+  growth_form = c("tree", "tree", "tree", "shrub", "shrub", "shrub", "shrub", "tree")
+)
+```
+
+# Tidy data and tibbles
+
+## Tidy data
+
+The `tidyverse` is built around the idea of **tidy data**, which has three rules:
+
+1. each **variable** is a column;
+2. each **observation** is a row;
+3. each **value** is a cell.
+
+Our `survey` is tidy: each row is one observation (one species in one plot), and each column one variable. In ecology we often store data in other ways, for example as a site × species matrix (one column per species), which is very convenient for some analyses but is not tidy, because the variable "species" is spread across many columns. At the end of this session we will learn to convert between both formats.
+
+## Tibbles
+
+The `tidyverse` works with **tibbles**, a modern version of the data frame. A tibble is still a data frame, so everything you learnt about data frames still applies, but it is printed in a more informative way: it shows the dimensions and the type of each column, and only the first rows.
+
+```{r tibble}
+survey <- as_tibble(survey)
+traits <- as_tibble(traits)
+survey
+class(survey)
+```
+
+All the `tidyverse` functions also work with ordinary data frames. You can read more about tibbles in `vignette("tibble")`.
+
+# The pipe
+
+The pipe operator `%>%` takes the object on its left and passes it as the **first argument** of the function on its right. These two lines are equivalent:
+
+```{r pipe-1}
+head(survey, 3)
+survey %>% head(3)
+```
+
+The real advantage of the pipe appears when we chain several steps. Read `%>%` as "**and then**":
+
+```{r pipe-2}
+survey %>%                    # take the survey, and then
+  filter(habitat == "forest") %>%   # keep the forest records, and then
+  arrange(desc(abundance)) %>%      # sort them from most to least abundant, and then
+  head(3)                           # show the first 3
+```
+
+Without the pipe, we would need to nest the functions inside each other (and read them from the inside out), or create intermediate objects at each step.
+
+::: {.note}
+**`%>%` and `|>`:** since version 4.1.0, R also has a **native pipe**, `|>`, which works in the same way in most everyday cases. You will see both in code written by others. In this course we will use `%>%`. In RStudio you can type the pipe with the shortcut `Ctrl + Shift + M` (on Mac, `Cmd + Shift + M`).
+:::
+
+# The main dplyr verbs
+
+All the `dplyr` verbs work in the same way: the **first argument is the data**, the following arguments describe what to do using the **column names without quotes**, and the result is always a new tibble. The original data are never modified unless we assign the result with `<-`.
+
+## `select()`: choosing columns
+
+```{r select-1}
+survey %>% select(plot, species, abundance)    # choose columns by name
+survey %>% select(-altitude, -height_cm)       # all columns except these
+survey %>% select(plot:altitude)               # a range of consecutive columns
+```
+
+`select()` has **helpers** to choose columns by their names, which are very useful in tables with many columns:
+
+```{r select-2}
+survey %>% select(starts_with("h"))       # columns whose names start with "h"
+survey %>% select(contains("itude"))      # columns whose names contain "itude"
+survey %>% select(where(is.numeric))      # numeric columns
+```
+
+## `filter()`: choosing rows
+
+`filter()` keeps the rows that meet one or more conditions. Separating conditions with a comma is the same as using `&`:
+
+```{r filter-1}
+survey %>% filter(habitat == "forest")
+survey %>% filter(habitat == "forest", altitude > 1300)          # forest AND above 1300 m
+survey %>% filter(habitat == "grassland" | altitude < 1000)      # grassland OR below 1000 m
+survey %>% filter(species %in% c("Quercus ilex", "Pinus pinea", "Pinus sylvestris"))
+```
+
+Unlike square brackets in base R (Session 4), `filter()` drops the rows where the condition is `NA`, so we do not get rows full of `NA`:
+
+```{r filter-2}
+survey %>% filter(abundance > 20)
+```
+
+To find or remove the rows with missing values, combine `filter()` with `is.na()`:
+
+```{r filter-3}
+survey %>% filter(is.na(abundance))      # records without abundance
+survey %>% filter(!is.na(abundance))     # records with abundance
+```
+
+## `arrange()`: sorting rows
+
+`arrange()` sorts the rows by one or more columns, in increasing order by default. `desc()` sorts in decreasing order. Missing values always go at the end:
+
+```{r arrange-1}
+survey %>% arrange(abundance)
+survey %>% arrange(plot, desc(abundance))     # by plot and, within each plot, by decreasing abundance
+```
+
+## `mutate()`: creating and modifying columns
+
+`mutate()` adds new columns, or modifies existing ones. We can create several columns at once, and use a column created in the same call:
+
+```{r mutate-1}
+survey %>%
+  mutate(height_m      = height_cm / 100,
+         log_abundance = log(abundance + 1),
+         tall          = height_m > 1)       # uses height_m, created in the line above
+```
+
+To recode a variable with one condition, `dplyr` has `if_else()`, a stricter version of `ifelse()`. For several conditions, `case_when()` is much clearer than nesting several `ifelse()`. Each line has the form `condition ~ value`, the conditions are checked in order, and `.default` gives the value for the rest:
+
+```{r mutate-2}
+survey <- survey %>%
+  mutate(dominant  = if_else(abundance >= 30, "yes", "no"),
+         alt_class = case_when(altitude <= 1000 ~ "low",
+                               altitude <= 1400 ~ "mid",
+                               .default = "high"))
+survey %>% select(plot, altitude, alt_class, species, abundance, dominant)
+```
+
+## `rename()`: renaming columns
+
+The new name goes on the left and the old name on the right:
+
+```{r rename-1}
+survey %>% rename(height = height_cm) %>% names()
+```
+
+## `distinct()` and `count()`
+
+`distinct()` returns the unique rows (or the unique combinations of the chosen columns), and `count()` counts the number of rows of each value or combination:
+
+```{r distinct-count}
+survey %>% distinct(plot, habitat)     # one row per plot
+survey %>% count(habitat)              # number of records per habitat
+survey %>% count(species, sort = TRUE) # number of plots where each species appears
+```
+
+# Grouping and summarising
+
+## `group_by()` and `summarise()`
+
+A very common analysis consists of three steps, which in the `tidyverse` translate directly into code:
+
+1. take the data,
+2. **group** them,
+3. **summarise** each group.
+
+```{r summarise-1}
+survey %>%                                         # 1. data
+  group_by(habitat) %>%                            # 2. group by habitat
+  summarise(n_records       = n(),                 # 3. summarise each group
+            n_plots         = n_distinct(plot),
+            n_species       = n_distinct(species),
+            total_abundance = sum(abundance, na.rm = TRUE),
+            mean_height     = mean(height_cm))
+```
+
+`n()` counts the rows of each group, and `n_distinct()` the number of different values. The result has one row per group and one column per summary.
+
+We can group by more than one variable. In that case, the result remains grouped by the first variables; the argument `.groups = "drop"` removes all the groups once the summary is done, which avoids surprises in later steps:
+
+```{r summarise-2}
+survey %>%
+  group_by(plot, habitat) %>%
+  summarise(richness        = n_distinct(species),
+            total_abundance = sum(abundance, na.rm = TRUE),
+            .groups = "drop")
+```
+
+`group_by()` can also be combined with `mutate()` or `filter()`. For example, to calculate the relative abundance of each species **within its plot**:
+
+```{r group-mutate}
+survey %>%
+  group_by(plot) %>%
+  mutate(rel_abundance = abundance / sum(abundance, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(plot, species, abundance, rel_abundance)
+```
+
+## `across()`: the same operation on several columns
+
+`across()` applies the same function to several columns at once. It plays the same role in `dplyr` as the apply family in base R (Session 5). Its first argument chooses the columns (with the same syntax as `select()`), and the second one gives the function:
+
+```{r across-1}
+survey %>%
+  group_by(habitat) %>%
+  summarise(across(c(abundance, height_cm), ~ mean(.x, na.rm = TRUE)))
+```
+
+The expression `~ mean(.x, na.rm = TRUE)` is a short way of writing a function, where `.x` stands for each column in turn. It is equivalent to `function(x) mean(x, na.rm = TRUE)`, the syntax we used with `sapply()`.
+
+We can also apply several functions at once with a named list, and `across()` works inside `mutate()` too:
+
+```{r across-2}
+survey %>%
+  group_by(habitat) %>%
+  summarise(across(c(abundance, height_cm),
+                   list(mean = ~ mean(.x, na.rm = TRUE),
+                        max  = ~ max(.x, na.rm = TRUE))))
+
+survey %>%
+  mutate(across(c(abundance, height_cm), log)) %>%   # log-transform both columns
+  head(3)
+```
+
+# Joining tables
+
+To combine two tables using a shared key column, `dplyr` has a family of **join** functions. They differ in which rows they keep when a key appears in only one of the tables. The figure shows each type of join as a Venn diagram:
+
+```{r joining-figure, echo = FALSE, out.width = '60%', fig.cap = "Figure 1. Types of joins"}
+knitr::include_graphics('./images/Joining.jpg')
+```
+
+Remember that *Festuca indigesta* is in `survey` but not in `traits`, and *Quercus pyrenaica* is in `traits` but not in `survey`.
+
+## `left_join()`
+
+`left_join(x, y)` keeps **all the rows of the first table** (`x`), and adds the columns of the second table (`y`) when there is a match. Rows without a match get `NA`. It is the most common join: we usually have our main dataset and we want to add information to it without losing any record.
+
+```{r left-join}
+survey %>%
+  left_join(traits, by = "species") %>%
+  select(plot, species, family, growth_form)
+```
+
+*Festuca indigesta* is kept, with `NA` in `family` and `growth_form`.
+
+## `inner_join()`, `right_join()` and `full_join()`
+
+- `inner_join(x, y)` keeps only the rows whose key is in **both** tables (the intersection). It is the default behaviour of `merge()` in base R.
+- `right_join(x, y)` keeps all the rows of the **second** table.
+- `full_join(x, y)` keeps all the rows of **both** tables (the union), filling the gaps with `NA`.
+
+```{r other-joins}
+survey %>% inner_join(traits, by = "species") %>% nrow()    # Festuca indigesta is lost
+survey %>% full_join(traits, by = "species") %>% nrow()     # Quercus pyrenaica is added
+survey %>% full_join(traits, by = "species") %>% tail(2)
+```
+
+## `anti_join()`: finding what does not match
+
+`anti_join(x, y)` returns the rows of `x` that **do not** have a match in `y`. It does not add any column: it is a tool to **check** your data. For example, to find the species of the survey that are missing from our species table (because of a typo, or because we forgot to add them):
+
+```{r anti-join}
+survey %>% anti_join(traits, by = "species")
+traits %>% anti_join(survey, by = "species")    # species in the table that were never recorded
+```
+
+::: {.tip}
+**Good practice:** before joining two tables, use `anti_join()` to check which keys do not match. In biodiversity data, unmatched species names are very often caused by typos, different spellings or synonyms (e.g. `"Quercus ilex"` vs `"Quercus Ilex"` vs `"Quercus ilex "`, with an extra space).
+:::
+
+# Reshaping data with tidyr
+
+## From long to wide: `pivot_wider()`
+
+`pivot_wider()` converts a long table into a wide one. We need to tell it which column contains the names of the new columns (`names_from`) and which one contains their values (`values_from`). This is how we build a site × species matrix from our survey:
+
+```{r pivot-wider-1}
+site_species <- survey %>%
+  select(plot, species, abundance) %>%
+  pivot_wider(names_from = species, values_from = abundance)
+site_species
+```
+
+The combinations that do not exist in the survey (a species not recorded in a plot) are filled with `NA`. In a community table, these should be zeros, so we use the argument `values_fill`:
+
+```{r pivot-wider-2}
+site_species <- survey %>%
+  select(plot, species, abundance) %>%
+  pivot_wider(names_from = species, values_from = abundance, values_fill = 0)
+site_species
+```
+
+::: {.note}
+Notice that the two records with `NA` in `abundance` (in plots `P3` and `P5`) are still `NA`: `values_fill` only fills the combinations that did not exist, not the missing values that were already in the data. This is correct: we know that those species were present, but we do not know how many individuals there were.
+:::
+
+We first used `select()` to keep only the three columns we need. If we had kept the other columns (`habitat`, `altitude`, `height_cm`...), `pivot_wider()` would have used them to identify the rows, and we would not get one row per plot.
+
+## From wide to long: `pivot_longer()`
+
+`pivot_longer()` does the opposite. We tell it which columns to gather (`cols`), the name of the new column that will contain the old column names (`names_to`), and the name of the new column that will contain the values (`values_to`):
+
+```{r pivot-longer-1}
+site_species %>%
+  pivot_longer(cols = -plot, names_to = "species", values_to = "abundance")
+```
+
+This is very useful with community data, which are usually stored as site × species matrices, such as `BCI` from `vegan` (Session 5). In long format we can use all the `dplyr` verbs, for example to calculate species richness, and add the plot identifier first with `mutate()`:
+
+```{r pivot-longer-bci}
+library(vegan)
+data("BCI")
+
+BCI %>%
+  mutate(plot = row_number()) %>%
+  pivot_longer(cols = -plot, names_to = "species", values_to = "abundance") %>%
+  filter(abundance > 0) %>%
+  group_by(plot) %>%
+  summarise(richness = n(), total = sum(abundance)) %>%
+  head()
+```
+
+## Other useful tidyr functions
+
+`separate_wider_delim()` splits one column into several, using a separator. For example, to split the scientific name into genus and specific epithet:
+
+```{r separate}
+survey %>%
+  separate_wider_delim(species, delim = " ", names = c("genus", "epithet"), cols_remove = FALSE) %>%
+  select(plot, species, genus, epithet)
+```
+
+`drop_na()` removes the rows with missing values (in any column, or only in the columns we specify), and `replace_na()` replaces them with a given value:
+
+```{r drop-replace-na}
+survey %>% drop_na(abundance) %>% nrow()
+survey %>% mutate(abundance = replace_na(abundance, 0)) %>% pull(abundance)
+```
+
+`pull()` extracts a single column as a vector, like `$` in base R.
+
+# Putting it all together
+
+The power of the `tidyverse` comes from chaining all these steps in a single, readable pipeline. For example: *for each plot, add the growth form of each species, remove the records without abundance, and calculate the number of species and the total abundance of trees and shrubs.*
+
+```{r pipeline}
+plot_summary <- survey %>%
+  left_join(traits, by = "species") %>%                 # add growth form
+  filter(!is.na(abundance), !is.na(growth_form)) %>%    # keep complete records
+  group_by(plot, habitat, growth_form) %>%              # group
+  summarise(n_species = n(),                            # summarise
+            abundance = sum(abundance),
+            .groups   = "drop") %>%
+  pivot_wider(names_from  = growth_form,                # one row per plot
+              values_from = c(n_species, abundance),
+              values_fill = 0) %>%
+  arrange(habitat, plot)                                # sort
+
+plot_summary
+```
+
+Each line does one thing, and the code reads almost like a sentence. Try to obtain the same table with base R!
+
+# Base R and tidyverse: equivalences
+
+| Task | Base R (Session 4) | tidyverse |
+|:--|:--|:--|
+| Select columns | `df[, c("a", "b")]` | `df %>% select(a, b)` |
+| Filter rows | `df[which(df$a > 5), ]`, `subset(df, a > 5)` | `df %>% filter(a > 5)` |
+| Sort rows | `df[order(df$a, -df$b), ]` | `df %>% arrange(a, desc(b))` |
+| Create a column | `df$c <- df$a / df$b` | `df %>% mutate(c = a / b)` |
+| Recode | `ifelse()`, `cut()` | `if_else()`, `case_when()` |
+| Rename | `names(df)[names(df) == "old"] <- "new"` | `df %>% rename(new = old)` |
+| Unique rows / counts | `unique()`, `table()` | `distinct()`, `count()` |
+| Summarise by groups | `aggregate(y ~ g, df, mean)`, `tapply()` | `df %>% group_by(g) %>% summarise(m = mean(y))` |
+| Same function on several columns | `apply()`, `sapply()` | `across()` |
+| Join (keep all of x) | `merge(x, y, all.x = TRUE)` | `left_join(x, y)` |
+| Join (keep matches only) | `merge(x, y)` | `inner_join(x, y)` |
+| Join (keep all) | `merge(x, y, all = TRUE)` | `full_join(x, y)` |
+| Rows without a match | – | `anti_join(x, y)` |
+| Long to wide | `xtabs()`, `reshape()` | `pivot_wider()` |
+| Wide to long | `reshape()`, `stack()` | `pivot_longer()` |
+| Remove rows with `NA` | `na.omit()`, `complete.cases()` | `drop_na()` |
+| Extract a column as a vector | `df$a` | `df %>% pull(a)` |
+
+Neither approach is better than the other: you will find both in the code of colleagues, in tutorials and in package documentation, so it is worth knowing both. Use the one you find clearer for each task.
+
+# Practice
+
+The exercises are organised in two levels. **Level 1** covers the basic concepts of this session, step by step. **Level 2** is intended for students who already have some experience with R, or who have completed Level 1 and want to go further. Write all your answers in an R script, use the pipe `%>%`, and add comments explaining each step.
+
+## Level 1: Getting started
+
+**Exercise 1. Select and filter.** From `survey`, obtain:
+
+a. the columns `plot`, `species` and `abundance` of the shrubland records;
+b. the records of plots `P1` and `P3` with more than 10 individuals;
+c. all the columns whose name contains the letter `"a"`.
+
+**Exercise 2. Sort.** Sort the survey by habitat and, within each habitat, from the tallest to the shortest species.
+
+**Exercise 3. Mutate.** Each plot has an area of 100 m². Add a column `density` with the number of individuals per square metre, and a column `size` that takes the values `"small"` (below 1 m), `"medium"` (1–5 m) or `"large"` (above 5 m), using `case_when()`.
+
+**Exercise 4. Count.** How many records does each plot have? In how many plots does each species appear? Use `count()`.
+
+**Exercise 5. Summarise.** For each habitat, calculate the number of plots, the number of different species, the mean abundance and the maximum height.
+
+## Level 2: Going further
+
+**Exercise 6. Base R vs tidyverse.** Choose three exercises of Session 4 and solve them again with the `tidyverse`. Check that you obtain the same results.
+
+**Exercise 7. Joins.** Use `anti_join()` to find which species of the survey are not in `traits`. Add the missing species to `traits` with its family (*Festuca indigesta* is a grass, family Poaceae, growth form `"herb"`), and then join both tables. Calculate the total abundance of each family.
+
+**Exercise 8. Relative abundance.** For each plot, calculate the relative abundance of each species (its abundance divided by the total abundance of the plot), and keep only the most abundant species of each plot. (Hint: `group_by()` combined with `filter()` and `max()`.)
+
+**Exercise 9. Community data.** Using `BCI` from `vegan`:
+
+a. Convert it into long format, adding a plot identifier.
+b. Calculate, for each species, the number of plots where it is present and its total abundance.
+c. Which are the 10 most abundant species? Sort them with `arrange()`.
+
+**Exercise 10. A complete pipeline.** Write a single pipeline that starts from `survey` and `traits` and produces a site × family table: one row per plot, one column per family, and the total abundance of each family in each plot as values (0 when the family is absent).
+
+# License and citation
+
+These materials are part of the course *Introduction to R for Data Science and Statistical Data Analysis* (Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos). The complete and most up-to-date version of all course materials is available at <https://github.com/juliachacon/globe-r-stats>.
+
+This tutorial is licensed under a [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). You are free to share and adapt it, provided that you give appropriate credit. The GLOBE and URJC logos are not covered by this licence.
+
+**How to cite:** Chacón Labella, J. (2026). *Section I · Data management with the tidyverse*. In: *Introduction to R for Data Science and Statistical Data Analysis*. Teaching materials, Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos. <https://github.com/juliachacon/globe-r-stats>

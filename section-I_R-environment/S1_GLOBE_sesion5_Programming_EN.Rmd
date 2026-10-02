@@ -1,0 +1,753 @@
+---
+title: "Section I · Programming basics in R"
+author: "Julia Chacón Labella"
+date: "Academic year 2026/27"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
+    includes:
+      in_header: ../assets/latex/preamble.tex
+  html_document:
+    toc: yes
+    number_sections: no
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<style>
+p.caption {
+  font-size: 0.8em;
+}
+
+/* Header with logos (replaces the default title block in HTML) */
+h1.title, h4.author, h4.date { display: none; }
+.course-header { margin: 10px 0 30px; padding-bottom: 12px; border-bottom: 1px solid #ddd; }
+.course-header .logos { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+.course-header .logos p { margin: 0; }
+.course-header img.globe { height: 75px; }
+.course-header img.urjc  { height: 55px; }
+.course-header .programme { margin-top: 18px; color: #555; }
+.course-header h1 { margin-top: 8px; }
+.course-header .meta { color: #555; }
+
+/* Simple boxes for objectives, notes, key rules and practice */
+.objectives, .note, .tip, .practice {
+  padding: 10px 15px; margin: 18px 0;
+  background-color: #f7f7f7; border: 1px solid #ddd; border-left: 4px solid #999;
+}
+</style>
+
+```{=html}
+<div class="course-header">
+<div class="logos">
+<div><img class="globe" src="../assets/logos/globe_logo.png" alt="GLOBE – Global Change Ecology and Biodiversity Management"></div>
+<div><img class="urjc" src="../assets/logos/urjc_logo.png" alt="Universidad Rey Juan Carlos"></div>
+</div>
+<div class="programme">Erasmus Mundus Joint Master in Global Change Ecology and Biodiversity Management</div>
+<h1>Section I · Programming basics in R</h1>
+<div class="meta">Julia Chacón Labella · Universidad Rey Juan Carlos · Academic year 2026/27</div>
+<div class="meta" style="font-size: 0.85em; margin-top: 4px;">Course materials: <a href="https://github.com/juliachacon/globe-r-stats">github.com/juliachacon/globe-r-stats</a> · Licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></div>
+</div>
+```
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+```{=latex}
+\newpage
+```
+
+::: {.objectives}
+**Learning objectives**
+
+By the end of this session you will be able to:
+
+- control which code is run with `if`, `else if` and `else`, and tell `if` apart from `ifelse()`;
+- repeat tasks with `for` loops, and control them with `next` and `break`;
+- store the results of a loop with `append()` or by pre-allocating the result;
+- replace loops with the apply family: `apply()`, `lapply()`, `sapply()` and `tapply()`;
+- write a simple function of your own and apply it to your data.
+:::
+
+# Why learn some programming
+
+So far we have run commands one at a time. But very often we need to **repeat the same task many times** (for each plot, each species, each file) or to **do different things depending on the data** (if a plot has more than 10 species, classify it as rich). Writing the same line of code fifty times is slow and error-prone. In this session we will learn the basic tools to automate these tasks:
+
+- **conditions** (`if` / `else`), to decide what to do;
+- **loops** (`for`), to repeat a task;
+- the **apply family**, a compact alternative to many loops;
+- how to write a simple **function** of your own.
+
+## Our example data
+
+We will use two datasets. The first one is the tree inventory of Barro Colorado Island (`BCI`), included in the `vegan` package, which we installed in Session 1. It is a site × species table: 50 plots (rows) and 225 tree species (columns), with the number of individuals of each species in each plot.
+
+```{r data-bci}
+library(vegan)
+data("BCI")
+dim(BCI)
+BCI[1:5, 1:4]     # first 5 plots and first 4 species
+```
+
+The second one is the vegetation survey we used in Session 4:
+
+```{r data-survey}
+survey <- data.frame(
+  plot      = c("P1", "P1", "P1", "P2", "P2", "P3", "P3", "P3", "P3",
+                "P4", "P4", "P5", "P5", "P5"),
+  habitat   = c("forest", "forest", "forest", "shrubland", "shrubland",
+                "forest", "forest", "forest", "forest",
+                "grassland", "grassland", "shrubland", "shrubland", "shrubland"),
+  altitude  = c(1250, 1250, 1250, 980, 980, 1400, 1400, 1400, 1400,
+                1600, 1600, 1050, 1050, 1050),
+  species   = c("Quercus ilex", "Pinus pinea", "Cistus ladanifer",
+                "Cistus ladanifer", "Lavandula stoechas",
+                "Quercus ilex", "Pinus sylvestris", "Juniperus oxycedrus", "Cistus ladanifer",
+                "Festuca indigesta", "Lavandula stoechas",
+                "Cistus ladanifer", "Retama sphaerocarpa", "Lavandula stoechas"),
+  abundance = c(12, 5, 30, 45, 18, 8, 15, 4, NA, 60, 7, 38, 9, NA),
+  height_cm = c(650, 900, 80, 95, 40, 520, 1100, 210, 70, 25, 35, 100, 180, 45)
+)
+```
+
+# Conditions: `if` and `else`
+
+## The structure of `if`
+
+`if` runs a block of code **only if a condition is `TRUE`**. The condition goes between parentheses, and the code to run between curly brackets `{ }`:
+
+```{r if-1}
+n_species <- 14
+
+if (n_species > 10) {
+  print("This is a species-rich plot")
+}
+```
+
+If the condition is `FALSE`, nothing happens. To do something different in that case, we add `else`:
+
+```{r if-2}
+n_species <- 6
+
+if (n_species > 10) {
+  print("This is a species-rich plot")
+} else {
+  print("This is a species-poor plot")
+}
+```
+
+With `else if` we can check several conditions in order. R runs the first block whose condition is `TRUE` and ignores the rest:
+
+```{r if-3}
+n_species <- 8
+
+if (n_species > 10) {
+  print("High richness")
+} else if (n_species > 5) {
+  print("Medium richness")
+} else {
+  print("Low richness")
+}
+```
+
+::: {.note}
+**Writing conditions:** remember the comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`) and the logical operators (`&` and, `|` or, `!` not) that we used in Session 4 to filter data. Note that `else` must be on the same line as the closing bracket `}` of the previous block.
+:::
+
+To print messages that combine text and values, `paste()` joins several pieces into a single piece of text:
+
+```{r if-paste}
+plot_name <- "P3"
+if (n_species > 5) {
+  print(paste("Plot", plot_name, "has", n_species, "species"))
+}
+```
+
+## `if` versus `ifelse()`
+
+`if` evaluates **a single condition** (one `TRUE` or `FALSE`). If we give it a vector with several values, R returns an error:
+
+```{r if-vector, error = TRUE}
+richness <- c(14, 6, 8)
+if (richness > 10) {
+  print("rich")
+}
+```
+
+To apply a condition to **every element of a vector** we use `ifelse()`, which we already saw in Session 4:
+
+```{r ifelse-vector}
+ifelse(richness > 10, "rich", "poor")
+```
+
+::: {.tip}
+**Key rule:** use `if` to decide *which code to run* (one decision), and `ifelse()` to *create a new variable* from a condition (one decision per element).
+:::
+
+# Loops: `for`
+
+## The structure of a `for` loop
+
+A `for` loop repeats a block of code once for each element of a vector. In each repetition (each **iteration**), a variable takes the value of the next element:
+
+```{r for-1}
+for (i in 1:5) {
+  print(i)
+}
+```
+
+Read it as: "for each `i` in the vector `1:5`, print `i`". The name of the variable is up to you (`i` is a tradition), and the vector can contain anything, for example species names:
+
+```{r for-2}
+genera <- c("Quercus", "Pinus", "Cistus")
+
+for (genus in genera) {
+  print(paste("Genus:", genus))
+}
+```
+
+## Looping over positions
+
+Very often we loop over the **positions** of a vector or the **rows** of a table, so that we can use them as indices. `seq_along(x)` returns the positions of a vector (`1, 2, 3...`), and `seq_len(n)` the numbers from 1 to `n`:
+
+```{r for-3}
+genera
+seq_along(genera)
+
+for (i in seq_along(genera)) {
+  print(paste("Position", i, "contains", genera[i]))
+}
+```
+
+::: {.note}
+`seq_along(x)` is safer than `1:length(x)`: if `x` is empty, `1:length(x)` gives `1 0` and the loop runs twice, whereas `seq_along(x)` gives an empty vector and the loop does not run.
+:::
+
+## An ecological example: species richness of each plot
+
+The **species richness** of a plot is the number of species present, i.e. the number of species with at least one individual. For the first plot of `BCI`:
+
+```{r for-richness-1}
+sum(BCI[1, ] > 0)     # BCI[1, ] > 0 gives TRUE for the species present; sum() counts them
+```
+
+To calculate it for the 50 plots, we repeat the same operation for each row with a loop, and store each result in a vector:
+
+```{r for-richness-2}
+richness <- numeric(nrow(BCI))         # an empty numeric vector with 50 positions (all 0)
+
+for (i in seq_len(nrow(BCI))) {
+  richness[i] <- sum(BCI[i, ] > 0)     # richness of plot i, stored in position i
+}
+
+richness
+```
+
+## Combining loops and conditions
+
+Inside a loop we can use `if` to do different things depending on the data. For example, let's classify each plot as richer or poorer than the average:
+
+```{r for-if}
+mean_richness <- mean(richness)
+richness_class <- character(nrow(BCI))     # an empty character vector
+
+for (i in seq_len(nrow(BCI))) {
+  if (richness[i] > mean_richness) {
+    richness_class[i] <- "above average"
+  } else {
+    richness_class[i] <- "below average"
+  }
+}
+
+table(richness_class)
+```
+
+::: {.note}
+This particular task could also be done in one line with `ifelse(richness > mean(richness), "above average", "below average")`. Loops are most useful when each iteration requires **several steps**, or steps that are not vectorised (reading a file, fitting a model, making a plot).
+:::
+
+## Controlling a loop: `next` and `break`
+
+`next` jumps to the next iteration, and `break` stops the loop completely. For example, to skip the survey records without abundance:
+
+```{r for-next}
+for (i in seq_len(nrow(survey))) {
+  if (is.na(survey$abundance[i])) {
+    next                                   # skip this record and go to the next one
+  }
+  if (survey$abundance[i] >= 40) {
+    print(paste(survey$species[i], "is very abundant in", survey$plot[i]))
+  }
+}
+```
+
+## Other loops: `while`
+
+A `while` loop repeats a block of code **while a condition is `TRUE`**, without knowing in advance how many times. It is less common in data analysis, and you must make sure that the condition eventually becomes `FALSE`, or the loop will never end (if this happens, press **Esc**).
+
+```{r while-1}
+# How many plots do we need, in order, to reach 2000 individuals?
+total <- 0
+n_plots <- 0
+while (total < 2000) {
+  n_plots <- n_plots + 1
+  total <- total + sum(BCI[n_plots, ])
+}
+n_plots
+total
+```
+
+## A loop over files
+
+Loops are especially useful to repeat the same task over many files, for example to read all the `.csv` files of a folder (Session 3):
+
+```{r for-files, eval = FALSE}
+files <- list.files("data/raw", pattern = "\\.csv$", full.names = TRUE)
+
+for (f in files) {
+  dat <- read.csv(f)
+  print(paste(basename(f), "has", nrow(dat), "rows"))
+}
+```
+
+# Storing the results of a loop
+
+Most of the time we want to **keep** the result of each iteration. There are two ways of doing this.
+
+## Growing an object with `append()`
+
+The simplest way is to start with an empty object and add each new result at the end. The function `append()` adds elements to a vector (the same as `c()`):
+
+```{r append-1}
+x <- c(10, 20, 30)
+append(x, 40)               # add at the end
+append(x, 15, after = 1)    # add after the first element
+```
+
+In a loop:
+
+```{r append-2}
+abundance_plot <- c()       # an empty vector
+
+for (i in 1:5) {
+  abundance_plot <- append(abundance_plot, sum(BCI[i, ]))
+}
+
+abundance_plot
+```
+
+## Pre-allocating the result
+
+The second way is to **create the result object with its final size before the loop**, and fill each position in each iteration. This is what we did with `richness`:
+
+```{r prealloc-1}
+abundance_plot <- numeric(5)     # a vector of 5 zeros, created before the loop
+
+for (i in 1:5) {
+  abundance_plot[i] <- sum(BCI[i, ])
+}
+
+abundance_plot
+```
+
+Empty vectors of each type are created with `numeric(n)`, `character(n)`, `logical(n)` or, in general, `vector(mode, n)`, e.g. `vector("list", n)` for a list.
+
+::: {.tip}
+**Good practice: pre-allocate when you know the final size.** Each time you use `append()`, R creates a new copy of the whole vector. With a few elements you will not notice it, but with thousands of iterations the loop becomes very slow. Pre-allocating is also clearer: the position `i` of the result corresponds to the iteration `i`. Use `append()` when you do not know in advance how many results there will be (e.g. you only keep the records that meet a condition).
+:::
+
+## Storing tables: a list of data frames
+
+When each iteration produces a table, we store each table as an element of a **list**, and at the end we combine them all with `do.call(rbind, ...)`, which applies `rbind()` to all the elements of the list at once:
+
+```{r list-results}
+habitats <- unique(survey$habitat)
+results <- vector("list", length(habitats))     # an empty list with one element per habitat
+names(results) <- habitats
+
+for (h in habitats) {
+  sub <- survey[survey$habitat == h, ]
+  results[[h]] <- data.frame(habitat         = h,
+                             n_records       = nrow(sub),
+                             n_species       = length(unique(sub$species)),
+                             total_abundance = sum(sub$abundance, na.rm = TRUE))
+}
+
+results                          # a list of three small data frames
+do.call(rbind, results)          # combined into a single data frame
+```
+
+# The apply family
+
+Many loops follow the same pattern: *apply the same function to each element (or row, or column) and collect the results*. The **apply family** of functions does exactly this in a single line, without having to create the result object or write the loop.
+
+| Function | Applies a function to... | Returns |
+|:--|:--|:--|
+| `apply(X, MARGIN, FUN)` | each row (`MARGIN = 1`) or column (`MARGIN = 2`) of a matrix or data frame | a vector (or matrix) |
+| `lapply(X, FUN)` | each element of a list or vector | a list |
+| `sapply(X, FUN)` | each element of a list or vector | a simplified vector or matrix, when possible |
+| `tapply(X, INDEX, FUN)` | each group of values of a vector, defined by a factor | a vector (one value per group) |
+
+## `apply()`: rows and columns
+
+`apply()` has three main arguments: the table, the **margin** (`1` for rows, `2` for columns) and the function. The total number of individuals in each plot (row), and the maximum abundance of each species (column):
+
+```{r apply-1}
+apply(BCI, 1, sum)[1:10]      # total individuals in the first 10 plots
+apply(BCI, 2, max)[1:5]       # maximum abundance of the first 5 species
+```
+
+For sums and means of rows and columns there are faster shortcuts: `rowSums()`, `colSums()`, `rowMeans()` and `colMeans()`.
+
+```{r apply-2}
+rowSums(BCI)[1:10]            # the same as apply(BCI, 1, sum)
+```
+
+Species richness, which we calculated before with a loop, can be obtained in a single line. `BCI > 0` converts the table into `TRUE`/`FALSE` (present/absent), and we count the `TRUE` values of each row:
+
+```{r apply-3}
+richness_apply <- apply(BCI > 0, 1, sum)
+all(richness_apply == richness)      # the same result as the loop
+```
+
+## `lapply()` and `sapply()`: elements of a list or vector
+
+We already used `lapply()` and `sapply()` with lists in Session 2. Now that we know how loops work, let's see step by step what they really do.
+
+### How `lapply()` works, step by step
+
+Let's create again the list of Session 2, with the surveys of two sites:
+
+```{r lapply-data}
+site_A <- data.frame(species = c("Quercus ilex", "Pinus pinea"),
+                     abundance = c(12, 5))
+site_B <- data.frame(species = c("Cistus ladanifer", "Quercus ilex", "Rosmarinus officinalis"),
+                     abundance = c(30, 4, 18))
+
+surveys <- list(site_A = site_A, site_B = site_B)
+```
+
+Conceptually, `surveys` looks like this:
+
+```text
+surveys
+  |
+  |-- site_A  -->  data frame of site A
+  |
+  `-- site_B  -->  data frame of site B
+```
+
+And this is the code we used to calculate the total abundance of each site:
+
+```{r lapply-1}
+lapply(surveys, function(site) sum(site$abundance))
+```
+
+What does R do here? Something equivalent to this:
+
+```{r lapply-2}
+# First iteration:
+site <- surveys[[1]]
+sum(site$abundance)
+
+# Second iteration:
+site <- surveys[[2]]
+sum(site$abundance)
+```
+
+In other words, `site` is simply a **temporary name that you choose** to refer to the element of the list that R is processing at that moment. You could have called it `x`, or any other name, and it would work exactly the same:
+
+```{r lapply-3}
+lapply(surveys, function(x) sum(x$abundance))
+lapply(surveys, function(whatever) sum(whatever$abundance))
+```
+
+because in each iteration R does:
+
+```text
+whatever = first element of surveys
+whatever = second element of surveys
+...
+```
+
+### Taking the expression apart
+
+This part of the code:
+
+```{r lapply-4, eval = FALSE}
+function(site) {
+  sum(site$abundance)
+}
+```
+
+is an **anonymous function**: a function that we create directly inside `lapply()`, without giving it a name. We could also create it separately, with a name (we will learn more about writing functions in the last section of this session):
+
+```{r lapply-5}
+total_abundance <- function(site) {
+  sum(site$abundance)
+}
+```
+
+and try it with one site:
+
+```{r lapply-6}
+total_abundance(site_A)
+```
+
+The result is 17 because, inside the function, `site` becomes `site_A`, so `site$abundance` is `c(12, 5)`, and `sum(c(12, 5))` is 17.
+
+Now we can give this function to `lapply()`, which applies it to each element of `surveys`:
+
+```{r lapply-7}
+lapply(surveys, total_abundance)
+```
+
+The general structure to remember is:
+
+```{r lapply-template, eval = FALSE}
+lapply(LIST, function(ELEMENT) {
+  do_something_with(ELEMENT)
+})
+```
+
+So the code:
+
+```{r lapply-8, eval = FALSE}
+lapply(surveys, function(site) {
+  sum(site$abundance)
+})
+```
+
+can be read literally as: *"for each element of `surveys`, call it `site` for a moment, and calculate the sum of its column `abundance`"*. The journey of each element is:
+
+```text
+surveys
+  |
+  |-- site_A  -->  site  -->  sum(site$abundance)  -->  17
+  |
+  `-- site_B  -->  site  -->  sum(site$abundance)  -->  52
+```
+
+::: {.note}
+**An important distinction:** `site_A` and `site_B` are the **names of the elements of the list**, whereas `site` is the **argument of the function**, which receives the content of those elements one after the other.
+:::
+
+::: {.tip}
+**`lapply()` is a loop in disguise.** The code above does the same as this `for` loop, but without having to create the result list and fill it:
+
+```{r lapply-loop, eval = FALSE}
+result <- vector("list", length(surveys))
+names(result) <- names(surveys)
+for (i in seq_along(surveys)) {
+  site <- surveys[[i]]
+  result[[i]] <- sum(site$abundance)
+}
+```
+:::
+
+### `lapply()` versus `sapply()`
+
+Look at the output of `lapply()` and `sapply()` with the same function:
+
+```{r lapply-vs-sapply-1}
+lapply(surveys, total_abundance)
+sapply(surveys, total_abundance)
+```
+
+- `lapply()` **always returns a list**, with one element per element of the input (`$site_A`, `$site_B`). The "l" stands for *list*.
+- `sapply()` does the same, but then tries to **simplify** the result. The "s" stands for *simplify*. Here each result is a single number, so `sapply()` puts them together in a named vector.
+
+The form of the result of `sapply()` depends on what the function returns for each element:
+
+```{r lapply-vs-sapply-2}
+# one value per element: a vector
+sapply(surveys, function(site) nrow(site))
+
+# several values per element, always the same number: a matrix (one column per element)
+sapply(surveys, function(site) range(site$abundance))
+
+# a different number of values per element: it cannot simplify, so it returns a list
+sapply(surveys, function(site) site$species)
+```
+
+::: {.tip}
+**Which one to use?** Use `sapply()` when the function returns **one value per element** (a total, a mean, a number of rows) and you want a vector. Use `lapply()` when each result is something more complex (a vector of different lengths, a data frame, a model) and you want to keep each result as an element of a list. `lapply()` is also more predictable: you always know that you will get a list.
+:::
+
+### Beyond lists: vectors and data frames
+
+`lapply()` and `sapply()` also work with vectors and data frames (a data frame is a list of columns, so the function is applied to each column):
+
+```{r sapply-1}
+sapply(survey, class)                         # the type of each column of survey
+sapply(c(4, 9, 16), sqrt)                     # the square root of each element
+lapply(split(survey$abundance, survey$plot), sum, na.rm = TRUE)   # total abundance per plot, as a list
+```
+
+`split()` divides a vector into groups and returns a list, one element per group, so that `lapply()` or `sapply()` can work on each group.
+
+## `tapply()`: summaries by groups
+
+`tapply()` applies a function to the values of a vector **separately for each group**. It is the base R equivalent of the "group and summarise" operations that we did with `aggregate()` in Session 4:
+
+```{r tapply-1}
+tapply(survey$abundance, survey$habitat, sum, na.rm = TRUE)    # total abundance per habitat
+tapply(survey$height_cm, survey$plot, max)                     # maximum height per plot
+tapply(survey$species, survey$plot, length)                    # number of records per plot
+```
+
+Additional arguments for the function (like `na.rm = TRUE`) are written after the function name.
+
+## Loop or apply?
+
+Both give the same result, so use whichever you find clearer. As a guide:
+
+- the apply family is shorter and avoids having to create and fill the result object;
+- a `for` loop is easier to read and debug when each iteration has several steps, or when an iteration depends on the result of the previous one.
+
+# Writing your own functions
+
+We have used many functions written by others. Writing our own functions is useful when we repeat the **same calculation many times**, with different data. A function is created with `function()`, and it is stored in an object like any other:
+
+```{r function-structure, eval = FALSE}
+function_name <- function(argument1, argument2) {
+  # code that uses the arguments
+  result                     # the last value is returned
+}
+```
+
+## Example: the Shannon diversity index
+
+The Shannon index combines the number of species and how evenly the individuals are distributed among them. It is calculated as $H' = -\sum p_i \ln p_i$, where $p_i$ is the proportion of individuals that belong to species $i$. Let's write a function that calculates it from a vector of abundances:
+
+```{r function-shannon}
+shannon <- function(abund) {
+  abund <- abund[abund > 0]          # remove absent species (log(0) is -Inf)
+  p <- abund / sum(abund)            # relative abundances
+  H <- -sum(p * log(p))              # Shannon index
+  return(H)                          # return the result
+}
+```
+
+Once created, the function appears in the Environment and we use it like any other function:
+
+```{r function-shannon-use}
+shannon(c(10, 5, 3))
+shannon(c(6, 6, 6))                  # same number of species, more even: higher diversity
+```
+
+Let's check that our function gives the same result as the function `diversity()` of `vegan`:
+
+```{r function-shannon-check}
+diversity(c(10, 5, 3))
+```
+
+And, combining it with `apply()`, we can calculate the Shannon diversity of every plot of `BCI` in a single line:
+
+```{r function-shannon-apply}
+H_bci <- apply(BCI, 1, shannon)
+round(H_bci[1:10], 2)
+all.equal(H_bci, diversity(BCI), check.attributes = FALSE)
+```
+
+## Arguments with default values
+
+As we saw in Session 2, arguments can have default values. For example, we can let the user choose the base of the logarithm, using the natural logarithm by default:
+
+```{r function-default}
+shannon <- function(abund, base = exp(1)) {
+  abund <- abund[abund > 0]
+  p <- abund / sum(abund)
+  -sum(p * log(p, base = base))
+}
+
+shannon(c(10, 5, 3))               # natural logarithm (default)
+shannon(c(10, 5, 3), base = 2)     # logarithm in base 2
+```
+
+::: {.note}
+**`return()`:** a function returns the value of its last line, so `return()` is optional. Using it makes clear which value is the result, especially in longer functions.
+:::
+
+::: {.tip}
+**Good practice:** test your function with simple data for which you know the answer (e.g. a single species should give a diversity of 0) before applying it to your real data.
+:::
+
+# Summary
+
+| Tool | Use | Example |
+|:--|:--|:--|
+| `if` / `else if` / `else` | run code depending on **one** condition | `if (x > 10) { ... } else { ... }` |
+| `ifelse()` | create a value for **each element** depending on a condition | `ifelse(x > 10, "rich", "poor")` |
+| `for` | repeat code for each element of a vector | `for (i in seq_len(n)) { ... }` |
+| `next`, `break` | skip an iteration / stop the loop | `if (is.na(x[i])) next` |
+| `while` | repeat code while a condition is `TRUE` | `while (total < 100) { ... }` |
+| `append()` | add elements to a vector | `res <- append(res, value)` |
+| Pre-allocation | create the result before the loop | `res <- numeric(n)`, `vector("list", n)` |
+| `do.call(rbind, list)` | combine a list of data frames | `do.call(rbind, results)` |
+| `apply()` | function by rows (1) or columns (2) | `apply(BCI, 1, sum)` |
+| `lapply()`, `sapply()` | function on each element of a list or vector | `sapply(survey, class)` |
+| `tapply()` | function by groups | `tapply(x, group, mean)` |
+| `function()` | create your own function | `f <- function(x) { ... }` |
+
+# Practice
+
+The exercises are organised in two levels. **Level 1** covers the basic concepts of this session, step by step. **Level 2** is intended for students who already have some experience with R, or who have completed Level 1 and want to go further. Write all your answers in an R script and add comments explaining each step.
+
+## Level 1: Getting started
+
+**Exercise 1. Conditions.** Create an object `ph` with a soil pH value of your choice. Write an `if` / `else if` / `else` structure that prints `"acidic"` if the pH is below 6.5, `"neutral"` if it is between 6.5 and 7.5, and `"alkaline"` if it is above 7.5. Test it with several values.
+
+**Exercise 2. `if` or `ifelse()`?** You have the pH of six soil samples: `c(5.2, 6.8, 7.9, 6.1, 7.2, 8.3)`. Classify all of them as `"acidic"` (below 6.5) or `"not acidic"` with a single line of code. Why does `if` not work here?
+
+**Exercise 3. Your first loop.** Write a `for` loop that prints, for each species of the vector `c("Quercus ilex", "Pinus pinea", "Cistus ladanifer")`, the message `"Species 1: Quercus ilex"`, `"Species 2: Pinus pinea"`, etc.
+
+**Exercise 4. Storing results.** Using a loop, calculate the total number of individuals in each of the 50 plots of `BCI`:
+
+a. first, growing the result with `append()`;
+b. then, pre-allocating the result vector.
+
+Check that both results are identical, and that they match `rowSums(BCI)`.
+
+**Exercise 5. The apply family.** Using `apply()`, calculate the number of plots in which each species of `BCI` is present. Which species is present in more plots? (Hint: `which.max()`.)
+
+## Level 2: Going further
+
+**Exercise 6. Loop with conditions.** Write a loop that goes through the records of `survey` and counts how many records have more than 10 individuals, skipping the records with `NA` using `next`. Check your result with a single line of code without a loop.
+
+**Exercise 7. Group summaries.** Using `tapply()`, calculate the mean height of the species in each habitat of `survey`. Then obtain the same result with `aggregate()` (Session 4). Which output format do you find more useful?
+
+**Exercise 8. Your own function.** Write a function called `simpson()` that calculates the Simpson diversity index, $D = 1 - \sum p_i^2$, from a vector of abundances.
+
+a. Test it with `c(10, 5, 3)` and with a single species, `c(20)`. Do the results make sense?
+b. Compare your result with `diversity(c(10, 5, 3), index = "simpson")`.
+c. Apply it to all the plots of `BCI` with `apply()`.
+
+**Exercise 9. A loop that builds a table.** For each plot of `survey`, create a one-row data frame with the plot name, its habitat, its number of species and the name of its most abundant species. Store the data frames in a list and combine them with `do.call(rbind, ...)`. (Hint: `which.max()` returns the position of the maximum, ignoring `NA`s.)
+
+**Exercise 10. Find the errors.** The following code should calculate the Shannon index of the first 10 plots of `BCI` and store them in a vector. It contains three problems. Find them and correct them.
+
+```{r ex-debug, eval = FALSE}
+shannon_10 <- numeric(10)
+for (i in 1:10)
+  p <- BCI[i, ] / sum(BCI[i, ])
+  shannon_10 <- -sum(p * log(p))
+}
+```
+
+# License and citation
+
+These materials are part of the course *Introduction to R for Data Science and Statistical Data Analysis* (Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos). The complete and most up-to-date version of all course materials is available at <https://github.com/juliachacon/globe-r-stats>.
+
+This tutorial is licensed under a [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). You are free to share and adapt it, provided that you give appropriate credit. The GLOBE and URJC logos are not covered by this licence.
+
+**How to cite:** Chacón Labella, J. (2026). *Section I · Programming basics in R*. In: *Introduction to R for Data Science and Statistical Data Analysis*. Teaching materials, Erasmus Mundus Joint Master GLOBE, Universidad Rey Juan Carlos. <https://github.com/juliachacon/globe-r-stats>
