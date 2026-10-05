@@ -1,0 +1,373 @@
+---
+title: "Common mistakes in your first R scripts"
+subtitle: "Section I. Introduction to the R environment"
+author: "Julia Chacón Labella"
+date: "Academic year 2026/27"
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+    includes:
+      in_header: ../assets/latex/preamble.tex
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: false
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", collapse = TRUE)
+```
+
+```{r logos, echo = FALSE, eval = knitr::is_html_output(), out.width = c("30%", "30%"), fig.show = "hold", fig.align = "center"}
+# HTML only: in the PDF the logos come from preamble.tex
+knitr::include_graphics(c("../assets/logos/globe_logo.png",
+                          "../assets/logos/urjc_logo.png"))
+```
+
+```{r course-name, echo = FALSE, results = "asis", eval = knitr::is_html_output()}
+cat("**Erasmus Mundus Master GLOBE: Global Change Ecology and Biodiversity Management**  \n",
+    "*Introduction to R for data science and statistical data analysis*\n\n",
+    "---\n", sep = "")
+```
+
+# Introduction
+
+This tutorial collects the most frequent errors found in the course exercises. Most of them come from a few basic ideas. If you get these right, your scripts will be much more reliable.
+
+Run the code yourself as you read. Some chunks are **meant to fail**: they show the error so that you can recognise it when it happens in your own scripts.
+
+# Creating a result is not the same as saving it
+
+This is the most common mistake. If you don't use `<-`, R only **prints** the result in the console. Nothing is stored, and the original object stays the same.
+
+```{r}
+months <- c("Jan", NA, "Feb", "Mar")
+
+# Wrong: the result is printed, but months still contains NA
+months[!is.na(months)]
+factor(months)
+months
+class(months)            # still "character"
+
+# Right: assign the result
+months <- months[!is.na(months)]
+months <- factor(months)
+months
+class(months)            # "factor"
+```
+
+The same applies to importing data and creating data frames:
+
+```{r, eval = FALSE}
+read.csv("iris.csv")                       # Wrong: printed and lost
+iris_data <- read.csv("iris.csv")          # Right
+
+data.frame(site, x, y)                     # Wrong: printed and lost
+df_exercise <- data.frame                  # Wrong: this stores the *function*, not your table
+df_exercise <- data.frame(site, x, y)      # Right
+```
+
+> **Rule:** if you want to keep it, assign it with `<-`.
+
+# Data types change silently (coercion)
+
+A vector can only hold **one type** of data. If you add an element of a different type, R converts the whole vector without warning.
+
+## Integers need an `L`
+
+```{r}
+x <- c(1L, 2L, 3L)
+class(x)
+
+x[5] <- 10      # 10 is a double (numeric)...
+x               # position 4 is filled with NA
+class(x)        # ...so x is now "numeric"
+
+x <- c(1L, 2L, 3L)
+x[5] <- 10L     # 10L is an integer
+class(x)        # still "integer"
+```
+
+Watch out:
+
+| Code                | Class   |
+|---------------------|---------|
+| `c(1, 2, 3)`        | numeric |
+| `seq(3, 7, by = 2)` | numeric |
+| `c(1L, 2L, 3L)`     | integer |
+| `1:3`               | integer |
+
+## Adding text turns everything into text
+
+```{r}
+y <- c(4L, 5L, 6L)
+y[5] <- "five"
+y
+class(y)
+```
+
+## Why does this happen?
+
+Think of the data types as a ladder, from the most specific to the most general:
+
+**logical → integer → numeric → character**
+
+Each step can represent everything in the steps below it:
+
+- a logical can become an integer (`TRUE` is `1`, `FALSE` is `0`);
+- an integer can become a number (`3L` is `3.0`);
+- anything can become text (`"3"`, `"TRUE"`).
+
+But not the other way round: `2.5` cannot be an integer without losing the decimal, and `"five"` cannot be a number.
+
+So R converts all elements to the most **general** type present, so that no value is lost:
+
+```{r}
+c(TRUE, 2L)       # integer (TRUE becomes 1)
+c(1L, 2.5)        # numeric
+c(3L, "five")     # character
+c(TRUE, "a")      # character
+```
+
+Once a vector has become text, you can no longer calculate with it:
+
+```{r, warning = TRUE}
+mean(y)
+```
+
+This often happens when importing data: a single cell with text (such as `"n.d."` or `"<5"`) turns the whole column into character.
+
+```{r}
+counts <- c("12", "8", "<5", "20")   # as it would arrive from a CSV
+class(counts)
+```
+
+> **Rule:** after changing a vector, check it with `class()`.
+
+# Choosing the right way to save
+
+| You want to...                                     | Use                                              | File     |
+|----------------------------------------------------|--------------------------------------------------|----------|
+| Share a table with Excel or other software         | `write.csv(obj, "file.csv", row.names = FALSE)`  | `.csv`   |
+| Save **one or several** R objects                  | `save(obj1, obj2, file = "file.RData")`          | `.RData` |
+| Save **one** R object (and load it with any name)  | `saveRDS(obj, "file.rds")`                       | `.rds`   |
+| Save **everything** in your environment            | `save.image("file.RData")`                       | `.RData` |
+
+## Before saving: load the data and prepare the folder
+
+The examples below use the `BCI` dataset, which comes with the **vegan** package. `BCI` does not exist in your session until you install the package (once), load it (every session) and load the dataset:
+
+```{r, eval = FALSE}
+install.packages("vegan")   # only once, if you don't have it yet
+library(vegan)
+data(BCI)
+```
+
+If you skip this, every line that uses `BCI` will fail with `object 'BCI' not found`.
+
+**Watch out:** in these examples we save the files **inside a `data/` subfolder**. `save()`, `saveRDS()` and `write.csv()` create files, but they **do not create folders**. If `data/` does not exist, you get an error that gives no clue about the real problem:
+
+```{r, error = TRUE}
+save(iris, file = "folder_that_does_not_exist/iris.RData")
+```
+
+So check first whether the folder exists, and create it only if it doesn't:
+
+```{r, eval = FALSE}
+dir.exists("data")              # TRUE or FALSE
+
+if (!dir.exists("data")) {
+  dir.create("data")
+}
+```
+
+We come back to folders and paths in the section [Working directory, projects and paths](#working-directory-projects-and-paths).
+
+## Common errors
+
+```{r, eval = FALSE}
+# Saves the whole environment, not just BCI
+save.image(file = "data/BCI.RData")
+
+# Better
+save(BCI, file = "data/BCI.RData")
+
+# This is NOT a CSV file: it is an RData file with a .csv name
+save(BCI, file = "data/BCI.csv")
+
+# Right
+write.csv(BCI, "data/BCI.csv", row.names = FALSE)
+```
+
+## The mysterious column "X"
+
+By default, `write.csv()` also writes the row names. When you import the file again, they appear as an extra column called `X`.
+
+```{r}
+tmp <- tempfile(fileext = ".csv")   # a temporary file, so we don't clutter your folder
+
+write.csv(iris, tmp)                       # adds row names
+names(read.csv(tmp))
+
+write.csv(iris, tmp, row.names = FALSE)    # Right
+names(read.csv(tmp))
+```
+
+# Deleting objects: be precise
+
+```{r, eval = FALSE}
+rm(x)                 # deletes x
+rm(x, y, site)        # deletes these three objects
+rm(list = ls())       # deletes EVERYTHING in the environment
+```
+
+Read the task carefully. If it asks you to "delete the vectors", use `rm(x, y, site)`, not `rm(list = ls())`, or your data frame will be deleted too.
+
+Also remember that you can only remove objects that exist. If you create `site` *inside* `data.frame()`, there is no `site` object to remove:
+
+```{r, error = TRUE}
+df_test <- data.frame(site = c("A", "B"), value = c(1, 2))
+rm(site)
+```
+
+> **Rule:** run `ls()` before and after `rm()` to see what you deleted.
+
+# Working directory, projects and paths
+
+- **Use RStudio projects.** When you open a project, the working directory is set automatically to the project folder.
+- **Avoid `setwd()` with absolute paths** such as `setwd("C:/Users/myname/Desktop/...")`. Your script will only work on your computer.
+- **Use relative paths** from the project folder:
+
+```{r, eval = FALSE}
+getwd()                        # where am I?
+list.files()                   # what's here?
+dir.create("data")             # create a subfolder
+iris_data <- read.csv("data/iris.csv")
+```
+
+When you write only `"iris.csv"`, you are saying "I am reading or saving this file **directly in the working directory**". When you write `"data/iris.csv"`, you are saying "I am reading or saving this file **in the `data` subfolder of the working directory**".
+
+# Data frames: all columns must have the same length
+
+```{r, error = TRUE}
+x <- c(1L, 2L, 3L, NA, 5L)                 # length 5
+site <- c("A", "B", "C")                   # length 3
+data.frame(site, x)
+```
+
+```{r}
+site <- c("A", "B", "C", "D", "E")         # length 5
+df_exercise <- data.frame(site, x)         # works
+df_exercise
+```
+
+> **Rule:** check with `length()` before building a data frame.
+
+# Ordered factors need explicit levels
+
+When we saw factors in the previous tutorial, we did not work with **ordered** factors. Here is an example, because they will be useful later in the course.
+
+Without `levels`, R sorts factor levels **alphabetically**:
+
+```{r}
+months <- c("Jan", "Feb", "Mar", "Apr")
+levels(factor(months))
+```
+
+Writing the levels alphabetically yourself has the same problem. For months, give the chronological order:
+
+```{r}
+months <- factor(months,
+                 levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
+                 ordered = TRUE)
+months
+```
+
+Level names must match the data exactly: `"jan"` is not `"Jan"`, and any value without a matching level becomes `NA`:
+
+```{r}
+factor(c("Jan", "jan", "Feb"), levels = c("Jan", "Feb"))
+```
+
+# Functions that are easy to confuse
+
+| Function                    | What it does                                                |
+|-----------------------------|-------------------------------------------------------------|
+| `install.packages("vegan")` | Downloads and installs a package (once)                     |
+| `library(vegan)`            | Loads it into your session (every session)                  |
+| `data(BCI)`                 | Loads a dataset that comes with R or a package              |
+| `str(BCI)`                  | Shows the **structure** of an object                        |
+| `structure()`               | Something else: it sets attributes. Not for inspecting data |
+| `head()`                    | Shows the first **6** rows by default                       |
+
+Also remember:
+
+- **R is case-sensitive:** `Library(vegan)` gives an error; `library(vegan)` works.
+- **No package is needed for CSV files:** `read.csv()` and `write.csv()` are part of base R.
+- **Dependencies load automatically:** `library(vegan)` already loads `permute`.
+
+```{r, error = TRUE}
+Library(stats)
+```
+
+# Keep your script clean: tips for working on the exercises
+
+A script you hand in should run from top to bottom without errors and contain only what is needed.
+
+```{r, eval = FALSE}
+# Exercise 3 - Your Name
+# Date
+
+# 1. Create integer vectors
+x <- c(1L, 2L, 3L)
+y <- c(4L, 5L, 6L)
+class(x)
+
+# 2. ...
+```
+
+- One comment per step, matching the task.
+- Don't mix tutorial code with exercise code.
+- Remove duplicated blocks and failed attempts.
+- Make sure each comment describes what the code really does.
+- Before handing it in: **restart R** (*Session → Restart R*) and run the whole script. If it works, it's ready.
+
+## Good practices and clean code
+
+Writing clean code is not only about the exercises: it makes your scripts easier to read for others, and for yourself in a few months. A few habits worth adopting from the start:
+
+- Use clear, consistent object names (`tree_height`, not `th2` or `x_final_final`).
+- Put spaces around `<-`, `=` and operators, and after commas: `x <- c(1, 2, 3)`.
+- Keep lines short and break long function calls over several lines.
+- Write comments that explain *why* you do something, not only *what*.
+- Load all packages at the top of the script.
+
+If you want to go further:
+
+- Wickham, H. *The tidyverse style guide*. <https://style.tidyverse.org/>. The most widely used style conventions for R code.
+- Wilson, G., Bryan, J., Cranston, K., Kitzes, J., Nederbragt, L. & Teal, T. K. (2017). Good enough practices in scientific computing. *PLoS Computational Biology*, 13(6), e1005510. <https://doi.org/10.1371/journal.pcbi.1005510>. Practical advice on organising data, code and projects in research.
+
+# The golden habit: check every step
+
+The students who checked their results after each step made the fewest mistakes.
+
+| Check                         | Function                   |
+|-------------------------------|----------------------------|
+| What type is it?              | `class()`                  |
+| How long is it?               | `length()`                 |
+| How many rows and columns?    | `dim()`                    |
+| What does it look like?       | `head()`, `str()`          |
+| What is in my environment?    | `ls()`                     |
+| Where am I working?           | `getwd()`, `list.files()`  |
+
+If you don't check, you're guessing.
+
+# License and citation
+
+This material is licensed under a [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). You are free to share and adapt it, provided you give appropriate credit.
+
+Please cite as:
+
+> Chacón Labella, J. (`r format(Sys.Date(), '%Y')`). *Common mistakes in your first R scripts*. Introduction to R for data science and statistical data analysis, Section I. Erasmus Mundus Master GLOBE, Universidad Rey Juan Carlos. https://github.com/juliachacon/globe-r-stats
