@@ -1,0 +1,618 @@
+---
+title: "Data manipulation with dplyr and tidyr"
+subtitle: "Section I, Session 6. Introduction to the R environment"
+author: "Julia Chacón Labella"
+date: "Academic year 2026/27"
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+    extra_dependencies: ["float"]
+    includes:
+      in_header: ../assets/latex/preamble.tex
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: false
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", collapse = TRUE,
+                      message = FALSE, warning = FALSE,
+                      fig.align = "center", fig.pos = "H")
+```
+
+```{r logos, echo = FALSE, eval = knitr::is_html_output(), out.width = c("30%", "30%"), fig.show = "hold", fig.align = "center"}
+# HTML only: in the PDF the logos come from preamble.tex
+knitr::include_graphics(c("../assets/logos/globe_logo.png",
+                          "../assets/logos/urjc_logo.png"))
+```
+
+```{r course-name, echo = FALSE, results = "asis", eval = knitr::is_html_output()}
+cat("**Erasmus Mundus Master GLOBE: Global Change Ecology and Biodiversity Management**  \n",
+    "*Introduction to R for data science and statistical data analysis*\n\n",
+    "---\n", sep = "")
+```
+
+# Introduction
+
+Before you can plot or analyse your data, you almost always need to prepare them: choose some columns, keep some rows, create new variables, calculate summaries by group, change the shape of a table or combine two tables. In the previous sessions we did some of this with base R. In this session we learn to do it with two packages of the **tidyverse**:
+
+- **dplyr**, a "grammar" of data manipulation: a small set of functions (verbs) that solve the most common tasks.
+- **tidyr**, to change the shape of your data (wide and long formats) and to deal with missing values.
+
+Their syntax is easy to read, and the same few functions cover most of what you will need as a researcher.
+
+Useful resources:
+
+- dplyr website: <https://dplyr.tidyverse.org/>
+- tidyr website: <https://tidyr.tidyverse.org/>
+- Free online book: Wickham, H., Çetinkaya-Rundel, M. & Grolemund, G. *R for Data Science* (2nd ed.), chapter *Data transformation*. <https://r4ds.hadley.nz/data-transform>
+
+# Packages and data
+
+Remember to work inside an RStudio project, and to write your code in a script.
+
+Install the packages once, if you don't have them yet:
+
+```{r, eval = FALSE}
+install.packages(c("dplyr", "tidyr", "palmerpenguins"))
+```
+
+And load them in every session:
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(palmerpenguins)
+```
+
+> **Note:** you can also install and load the whole tidyverse with `install.packages("tidyverse")` and `library(tidyverse)`. This loads dplyr, tidyr, ggplot2 and several other packages at once.
+
+When you load dplyr, R shows a message about **conflicts**: some dplyr functions have the same name as functions in other packages, for example `filter()`, which also exists in the `stats` package. When this happens, R uses the function of the package loaded **last**. This is not an error. If you ever need the other version, write the package name before the function: `stats::filter()`.
+
+We will work with the `penguins` dataset again: measurements of 344 penguins of three species from three islands in the Palmer Archipelago (Antarctica).
+
+```{r}
+penguins
+```
+
+## Tibbles
+
+Notice that `penguins` is not printed like a normal data frame. It is a **tibble**, the tidyverse version of a data frame. It works the same way, but it prints more nicely:
+
+- It shows only the first 10 rows and the columns that fit on the screen.
+- It shows the type of each column under its name: `<fct>` (factor), `<dbl>` (numeric), `<int>` (integer), `<chr>` (character).
+
+You can convert any data frame into a tibble with `as_tibble()`:
+
+```{r}
+head(iris)
+as_tibble(iris)
+```
+
+# Tidy data
+
+The tidyverse is built around one idea, **tidy data**:
+
+1. Each **variable** is a column.
+2. Each **observation** is a row.
+3. Each **value** is a cell.
+
+This sounds obvious, but very often field data are not stored this way. A typical example is a community table, with one row per site and one column per species:
+
+```{r}
+community_wide <- tibble(
+  site = c("S1", "S2", "S3"),
+  Quercus_ilex = c(12, 0, 5),
+  Pinus_sylvestris = c(3, 20, 0),
+  Juniperus_oxycedrus = c(0, 4, 7)
+)
+
+community_wide
+```
+
+This is the **wide format**. It is easy to read and to fill in during fieldwork, but the variable "species" is spread over three columns, and the variable "abundance" is in the cells. The same data in **long format** (tidy) look like this:
+
+```{r, echo = FALSE}
+community_wide |>
+  pivot_longer(cols = -site, names_to = "species", values_to = "abundance")
+```
+
+Now each row is one observation (one species at one site), and each variable has its own column. This is the format that most functions for plotting (`ggplot2`) and modelling need. We will see how to change from one format to the other in the section [Reshaping data with tidyr](#reshaping).
+
+# The pipe
+
+Before looking at the dplyr verbs, we need the **pipe**, `|>`. It takes what is on its left and passes it as the first argument to the function on its right. These two lines do exactly the same:
+
+```{r}
+head(penguins, 3)
+
+penguins |> head(3)
+```
+
+The advantage appears when we chain several steps. Read the pipe as **"and then"**:
+
+```{r}
+penguins |>
+  filter(species == "Gentoo") |>
+  select(species, island, body_mass_g) |>
+  head(3)
+```
+
+"Take `penguins`, **and then** keep only the Gentoo penguins, **and then** keep three columns, **and then** show the first three rows". Without the pipe, the same code is much harder to read, because you have to read it from the inside out:
+
+```{r, eval = FALSE}
+head(select(filter(penguins, species == "Gentoo"), species, island, body_mass_g), 3)
+```
+
+## `|>` and `%>%`
+
+`|>` is the **native pipe** of R, available since R 4.1. You will also find `%>%` in a lot of code, especially online. It comes from the `magrittr` package and is loaded with dplyr. For everything we do in this course they work the same way. In this course we use `|>`.
+
+## Keyboard shortcut for the pipe
+
+You don't need to type the pipe by hand. In RStudio, use:
+
+- **Windows / Linux:** `Ctrl + Shift + M`
+- **Mac:** `Cmd + Shift + M`
+
+Which pipe it writes depends on a setting. Go to *Tools → Global Options → Code → Editing* and tick *Use native pipe operator, |> (requires R 4.1+)*. With it ticked, the shortcut writes `|>`; without it, it writes `%>%`. Since in this course we use `|>`, please tick it.
+
+# The five main dplyr verbs
+
+dplyr provides a small set of verbs, each one for a single task:
+
+| Verb          | What it does                                     | Works on |
+|---------------|--------------------------------------------------|----------|
+| `select()`    | Picks columns by their names                     | Columns  |
+| `filter()`    | Picks rows by their values                       | Rows     |
+| `arrange()`   | Changes the order of the rows                    | Rows     |
+| `mutate()`    | Adds new columns, calculated from existing ones  | Columns  |
+| `summarise()` | Reduces many values to a single summary          | Rows     |
+
+All of them work the same way:
+
+- The first argument is always the data (a data frame or a tibble). This is what makes them work so well with the pipe.
+- Inside the function, you refer to the columns by their name, **without quotes** and without `$`.
+- They always return a new tibble. **They never modify the original data**: if you want to keep the result, assign it with `<-`.
+
+## `select()`: choose columns
+
+```{r}
+penguins |> select(species, island, body_mass_g)
+```
+
+A minus sign removes columns:
+
+```{r}
+penguins |> select(-year, -sex)
+```
+
+`select()` has helpers to choose several columns at once. For example, all the columns whose name starts with `bill`, or ends with `mm`:
+
+```{r}
+penguins |> select(species, starts_with("bill"))
+
+penguins |> select(ends_with("mm"))
+```
+
+Other helpers are `contains()` and `everything()`. You can find them all in `?select`.
+
+To change the name of a column, use `rename()`, with the format `new_name = old_name`:
+
+```{r}
+penguins |> rename(mass = body_mass_g)
+```
+
+## `filter()`: choose rows
+
+`filter()` keeps the rows that meet a condition. The conditions use the comparison operators we saw in Section I:
+
+| Operator | Meaning                    |
+|----------|----------------------------|
+| `==`     | equal to                   |
+| `!=`     | not equal to               |
+| `>`, `<` | greater than, less than    |
+| `>=`, `<=` | greater or equal, less or equal |
+| `%in%`   | is one of these values     |
+| `&`      | and                        |
+| `\|`     | or                         |
+| `!`      | not                        |
+
+```{r}
+penguins |> filter(species == "Adelie")
+
+penguins |> filter(body_mass_g > 5500)
+```
+
+Several conditions separated by commas must **all** be true (the same as `&`):
+
+```{r}
+penguins |> filter(species == "Gentoo", sex == "female", body_mass_g > 5000)
+```
+
+`%in%` is the clearest way to keep several values of the same variable:
+
+```{r}
+penguins |> filter(island %in% c("Biscoe", "Dream"))
+```
+
+To keep or remove the rows with missing values in a column, use `is.na()`:
+
+```{r}
+penguins |> filter(is.na(sex))
+
+penguins |> filter(!is.na(sex))
+```
+
+## `arrange()`: order rows
+
+`arrange()` orders the rows by one or several columns, from smallest to largest:
+
+```{r}
+penguins |> arrange(body_mass_g)
+```
+
+`desc()` orders from largest to smallest:
+
+```{r}
+penguins |> arrange(desc(body_mass_g))
+```
+
+With several columns, the second one is used to order the rows that have the same value in the first:
+
+```{r}
+penguins |> arrange(species, desc(body_mass_g))
+```
+
+## `mutate()`: create new columns
+
+`mutate()` adds new columns, calculated from the existing ones. The new columns are added at the end, so here we select a few columns first to see them better:
+
+```{r}
+penguins |>
+  select(species, body_mass_g, bill_length_mm, bill_depth_mm) |>
+  mutate(body_mass_kg = body_mass_g / 1000,
+         bill_ratio = bill_length_mm / bill_depth_mm)
+```
+
+If you give a new column the name of an existing one, you **replace** it.
+
+`if_else()` is very useful inside `mutate()`, to create a column that depends on a condition (remember `if`/`else` from Session 5):
+
+```{r}
+penguins |>
+  select(species, body_mass_g) |>
+  mutate(size_class = if_else(body_mass_g > 4500, "large", "small"))
+```
+
+## `summarise()`: calculate summaries
+
+`summarise()` reduces a whole column to a single value, such as a mean, a maximum or a count:
+
+```{r}
+penguins |>
+  summarise(mean_mass = mean(body_mass_g, na.rm = TRUE),
+            max_mass = max(body_mass_g, na.rm = TRUE),
+            n = n())
+```
+
+`n()` counts the number of rows. Don't forget `na.rm = TRUE` when there are missing values. Otherwise the result is `NA`:
+
+```{r}
+penguins |> summarise(mean_mass = mean(body_mass_g))
+```
+
+On its own, `summarise()` is not very useful. It becomes very powerful when we combine it with `group_by()`.
+
+# Working by groups: `group_by()`
+
+`group_by()` divides the data into groups. The verbs that come after it work **within each group**. The most common combination is `group_by()` + `summarise()`, a three-step summary:
+
+1. Data
+2. Group by
+3. Summarise
+
+```{r}
+penguins |>                                              # 1. Data
+  group_by(species) |>                                   # 2. Group by
+  summarise(n = n(),                                     # 3. Summarise
+            mean_mass = mean(body_mass_g, na.rm = TRUE),
+            sd_mass = sd(body_mass_g, na.rm = TRUE))
+```
+
+The result has one row per group. You can group by more than one variable:
+
+```{r}
+penguins |>
+  group_by(species, island) |>
+  summarise(n = n(),
+            mean_mass = mean(body_mass_g, na.rm = TRUE))
+```
+
+## Counting: `count()`
+
+Counting rows per group is so common that dplyr has a shortcut. These two give the same result:
+
+```{r}
+penguins |>
+  group_by(species, island) |>
+  summarise(n = n())
+
+penguins |> count(species, island)
+```
+
+## `group_by()` with `mutate()`
+
+`group_by()` also works with `mutate()`. In this case, the result keeps all the rows, but the calculation is made within each group. For example, the difference between the mass of each penguin and the mean mass **of its species**:
+
+```{r}
+penguins |>
+  select(species, body_mass_g) |>
+  group_by(species) |>
+  mutate(diff_from_mean = body_mass_g - mean(body_mass_g, na.rm = TRUE)) |>
+  ungroup()
+```
+
+The data stay grouped until you remove the groups with `ungroup()`. Do it when you have finished working by groups, or the following steps will keep working by groups without you noticing.
+
+## Removing duplicates: `distinct()`
+
+`distinct()` keeps only the unique rows, or the unique combinations of the columns you give it:
+
+```{r}
+penguins |> distinct(species, island)
+```
+
+This tells us quickly which species live on which island.
+
+# Putting it all together
+
+The real power of dplyr is in combining the verbs. For example: the mean body mass of females and males of each species, in kg, ordered from heaviest to lightest, without penguins of unknown sex. This time we **assign** the result, to keep it:
+
+```{r}
+mass_by_sex <- penguins |>
+  filter(!is.na(sex)) |>
+  mutate(body_mass_kg = body_mass_g / 1000) |>
+  group_by(species, sex) |>
+  summarise(n = n(),
+            mean_mass_kg = mean(body_mass_kg, na.rm = TRUE)) |>
+  ungroup() |>
+  arrange(desc(mean_mass_kg))
+
+mass_by_sex
+```
+
+Write each step on its own line, with the pipe at the end of the line. Then you can run the code step by step, selecting it up to any line, to check what each step does.
+
+# Reshaping data with tidyr {#reshaping}
+
+## From wide to long: `pivot_longer()`
+
+`pivot_longer()` makes a table **longer**: it increases the number of rows and decreases the number of columns. Let's go back to our community table in wide format:
+
+```{r}
+community_wide
+```
+
+```{r}
+community_long <- community_wide |>
+  pivot_longer(cols = -site,
+               names_to = "species",
+               values_to = "abundance")
+
+community_long
+```
+
+The arguments are:
+
+- `cols`: the columns to pivot. Here, all except `site`. You can use the same helpers as in `select()`, for example `starts_with()`.
+- `names_to`: the name of the **new** column that will contain the old column names (here, the species).
+- `values_to`: the name of the **new** column that will contain the values of the cells (here, the abundance).
+
+`names_to` and `values_to` don't exist yet in the data, so they go in quotes.
+
+Now the data are ready to work with dplyr. For example, the total abundance and the number of species present at each site:
+
+```{r}
+community_long |>
+  group_by(site) |>
+  summarise(total_abundance = sum(abundance),
+            richness = sum(abundance > 0))
+```
+
+`sum(abundance > 0)` counts how many values are greater than zero, because `TRUE` counts as 1 and `FALSE` as 0 (remember the coercion ladder).
+
+## From long to wide: `pivot_wider()`
+
+`pivot_wider()` does the opposite: it makes a table **wider**. It is less often needed to tidy data, but it is very useful to create summary tables, or to prepare data for packages that need a site × species matrix, such as `vegan`.
+
+```{r}
+community_long |>
+  pivot_wider(names_from = species,
+              values_from = abundance)
+```
+
+- `names_from`: the column whose values become the new column names.
+- `values_from`: the column whose values fill the cells.
+
+Here the column names already exist in the data, so they go **without** quotes.
+
+A real example from tidyr: `fish_encounters` records when tagged fish swimming down a river were detected by a series of monitoring stations.
+
+```{r}
+fish_encounters
+```
+
+A wide table, with one row per fish and one column per station, is easier to read:
+
+```{r}
+fish_encounters |>
+  pivot_wider(names_from = station, values_from = seen)
+```
+
+The table is full of `NA`, because the data only record when a fish **was** detected. Here we know that a missing record means the fish was not seen, so we can ask `pivot_wider()` to fill the gaps with zeros:
+
+```{r}
+fish_encounters |>
+  pivot_wider(names_from = station, values_from = seen, values_fill = 0)
+```
+
+# Missing values with tidyr
+
+Missing values (`NA`) are part of almost every real dataset. tidyr has three functions to deal with them, and each one answers a different question.
+
+## `drop_na()`: remove rows with missing values
+
+Without arguments, `drop_na()` removes every row with at least one `NA` in **any** column:
+
+```{r}
+nrow(penguins)
+
+penguins |> drop_na() |> nrow()
+```
+
+This is often too drastic: a row is removed even if the missing value is in a column you don't need. It is usually better to say which columns to check:
+
+```{r}
+penguins |> drop_na(body_mass_g) |> nrow()
+```
+
+## `replace_na()`: replace missing values with a known value
+
+Sometimes we know what a missing value means. Imagine a survey where the observer left the cell empty when a species was not found:
+
+```{r}
+survey <- tibble(
+  site = c("S1", "S1", "S2", "S2"),
+  species = c("Quercus ilex", "Pinus sylvestris", "Quercus ilex", "Pinus sylvestris"),
+  count = c(12, NA, 5, 20)
+)
+
+survey |> mutate(count = replace_na(count, 0))
+```
+
+Be careful: replace an `NA` with a value **only** when you know what it means. A count of zero ("I looked and there was none") is not the same as a missing value ("I didn't measure it"). Replacing missing measurements with zeros changes your results.
+
+## `fill()`: fill with the previous value
+
+A very common situation in field data sheets: the site is written only in the first row, and the rows below are left empty because "it's the same site".
+
+```{r}
+field_sheet <- tibble(
+  site = c("S1", NA, NA, "S2", NA),
+  quadrat = c(1, 2, 3, 1, 2),
+  cover = c(40, 35, 50, 80, 75)
+)
+
+field_sheet
+```
+
+`fill()` copies the last non-missing value downwards:
+
+```{r}
+field_sheet |> fill(site)
+```
+
+With `.direction = "up"` it fills upwards instead.
+
+# Joining tables
+
+Often the information we need is in **two tables**: for example, one with the characteristics of each site and another with the species richness measured at each site. To combine them, we need a column they have in common, the **key**. Here, `site`.
+
+```{r}
+sites <- tibble(
+  site = c("S1", "S2", "S3", "S4"),
+  habitat = c("forest", "grassland", "forest", "shrubland")
+)
+
+richness <- tibble(
+  site = c("S1", "S2", "S3", "S5"),
+  n_species = c(14, 22, 9, 17)
+)
+
+sites
+richness
+```
+
+The two tables do not contain exactly the same sites: `S4` has no richness data, and `S5` has no habitat information. The four types of join differ in what they do with these rows:
+
+| Join              | Keeps                                     | Sites in the result   |
+|-------------------|-------------------------------------------|-----------------------|
+| `inner_join(x, y)` | Only rows with a match in **both** tables | S1, S2, S3            |
+| `left_join(x, y)`  | **All** rows of `x` (the left table)      | S1, S2, S3, S4        |
+| `right_join(x, y)` | **All** rows of `y` (the right table)     | S1, S2, S3, S5        |
+| `full_join(x, y)`  | **All** rows of both tables               | S1, S2, S3, S4, S5    |
+
+When a row has no match in the other table, the new columns are filled with `NA`.
+
+```{r}
+inner_join(sites, richness, by = "site")
+
+left_join(sites, richness, by = "site")
+
+right_join(sites, richness, by = "site")
+
+full_join(sites, richness, by = "site")
+```
+
+`left_join()` is the one you will use most: you have a main table and you want to add information to it from another one, without losing any of its rows.
+
+Before joining, it is a good idea to check which rows will not find a match. `anti_join()` returns the rows of `x` that have **no** match in `y`:
+
+```{r}
+anti_join(sites, richness, by = "site")   # sites without richness data
+anti_join(richness, sites, by = "site")   # sites without habitat data
+```
+
+If the key column has a different name in each table, use `by = c("name_in_x" = "name_in_y")`.
+
+# Common mistakes with dplyr and tidyr
+
+**Not assigning the result.** dplyr verbs never modify the original data. If you don't use `<-`, the result is only printed:
+
+```{r}
+penguins |> filter(species == "Adelie")   # printed, not saved
+nrow(penguins)                             # penguins still has all the rows
+
+adelie <- penguins |> filter(species == "Adelie")
+nrow(adelie)
+```
+
+**Using `=` instead of `==` in `filter()`.** `=` assigns, `==` compares. dplyr even suggests the solution:
+
+```{r, error = TRUE}
+penguins |> filter(species = "Adelie")
+```
+
+**Checking for missing values with `== NA`.** Any comparison with `NA` gives `NA`, so this returns no rows. Use `is.na()`:
+
+```{r}
+penguins |> filter(sex == NA) |> nrow()
+penguins |> filter(is.na(sex)) |> nrow()
+```
+
+**Values must match exactly.** R is case-sensitive, so this also returns no rows, without any error:
+
+```{r}
+penguins |> filter(species == "adelie") |> nrow()
+```
+
+If you are not sure how the values are written, check them first with `unique(penguins$species)` or `distinct(penguins, species)`.
+
+**Forgetting `na.rm = TRUE`.** With missing values, `mean()`, `sum()`, `max()`... return `NA`.
+
+**Forgetting `ungroup()`.** After `group_by()`, the data stay grouped and the next steps keep working by groups.
+
+**Quotes in the wrong place.** Existing columns go without quotes (`select(species)`, `names_from = species`); names of new columns in `pivot_longer()` go in quotes (`names_to = "species"`).
+
+# License and citation
+
+This material is licensed under a [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). You are free to share and adapt it, provided you give appropriate credit.
+
+Please cite as:
+
+> Chacón Labella, J. (2026). *Data manipulation with dplyr and tidyr*. Introduction to R for data science and statistical data analysis, Section I. Erasmus Mundus Master GLOBE, Universidad Rey Juan Carlos. https://github.com/juliachacon/globe-r-stats
+
+Data: Horst, A. M., Hill, A. P. & Gorman, K. B. (2020). *palmerpenguins: Palmer Archipelago (Antarctica) penguin data*. R package. <https://doi.org/10.5281/zenodo.3960218>
